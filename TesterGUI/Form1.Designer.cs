@@ -39,6 +39,10 @@
             label3 = new Label();
             label4 = new Label();
             buttonCreate = new Button();
+            label2 = new Label();
+            label5 = new Label();
+            textBox1 = new TextBox();
+            label6 = new Label();
             SuspendLayout();
             // 
             // panelHeap
@@ -98,7 +102,7 @@
             // labelInfo
             // 
             labelInfo.AutoSize = true;
-            labelInfo.Location = new Point(558, 249);
+            labelInfo.Location = new Point(560, 280);
             labelInfo.Name = "labelInfo";
             labelInfo.Size = new Size(28, 15);
             labelInfo.TabIndex = 7;
@@ -116,7 +120,7 @@
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(560, 281);
+            label3.Location = new Point(562, 312);
             label3.Name = "label3";
             label3.Size = new Size(38, 15);
             label3.TabIndex = 9;
@@ -125,7 +129,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(560, 305);
+            label4.Location = new Point(562, 336);
             label4.Name = "label4";
             label4.Size = new Size(38, 15);
             label4.TabIndex = 10;
@@ -141,11 +145,49 @@
             buttonCreate.UseVisualStyleBackColor = true;
             buttonCreate.Click += buttonCreate_Click;
             // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new Point(562, 360);
+            label2.Name = "label2";
+            label2.Size = new Size(38, 15);
+            label2.TabIndex = 12;
+            label2.Text = "label2";
+            // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Location = new Point(562, 384);
+            label5.Name = "label5";
+            label5.Size = new Size(38, 15);
+            label5.TabIndex = 13;
+            label5.Text = "label5";
+            // 
+            // textBox1
+            // 
+            textBox1.Location = new Point(560, 238);
+            textBox1.Name = "textBox1";
+            textBox1.Size = new Size(100, 23);
+            textBox1.TabIndex = 14;
+            // 
+            // label6
+            // 
+            label6.AutoSize = true;
+            label6.Location = new Point(562, 220);
+            label6.Name = "label6";
+            label6.Size = new Size(149, 15);
+            label6.TabIndex = 15;
+            label6.Text = "Random Operations Count";
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(899, 450);
+            Controls.Add(label6);
+            Controls.Add(textBox1);
+            Controls.Add(label5);
+            Controls.Add(label2);
             Controls.Add(buttonCreate);
             Controls.Add(label4);
             Controls.Add(label3);
@@ -176,5 +218,9 @@
         private Label label3;
         private Label label4;
         private Button buttonCreate;
+        private Label label2;
+        private Label label5;
+        private TextBox textBox1;
+        private Label label6;
     }
 }

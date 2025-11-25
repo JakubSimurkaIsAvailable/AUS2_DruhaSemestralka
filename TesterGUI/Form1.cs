@@ -22,6 +22,8 @@ namespace TesterGUI
         private string heapDataPath = string.Empty;
         private string heapMetaPath = string.Empty;
         private int recordSize = 150;
+        private int operationsCount = 0;
+        
 
         public Form1()
         {
@@ -139,7 +141,7 @@ namespace TesterGUI
                     listMatrix.Add(new List<Patient>());
 
                 listMatrix[addr].Add(patient);
-
+                operationsCount++;
                 labelInfo.Text = $"Inserted {patient.Name} {patient.Surname} ({patient.UniqueID}) at block {addr}.";
 
                 // perform checks like in Tester.cs
@@ -218,7 +220,7 @@ namespace TesterGUI
                 int validCountBeforeDelete = heap.GetValidCountInBlock(blockIndex);
                 heap.Delete(blockIndex, dataToDelete);
                 listMatrix[blockIndex].Remove(dataToDelete);
-
+                operationsCount++;
                 // try to get deleted record from heap - should throw
                 bool retrievalSucceeded = true;
                 try
@@ -313,7 +315,7 @@ namespace TesterGUI
 
                 var valueHeap = heap.Get(blockIndex, dataToGet);
                 var valueList = listMatrix[blockIndex].First(x => x.UniqueID == uniqueId);
-
+                operationsCount++;
                 if (!valueList.Equals(valueHeap))
                 {
                     labelInfo.Text = "ERROR: Retrieved value does not match expected value!";
@@ -342,7 +344,7 @@ namespace TesterGUI
 
             if (randomRunning)
             {
-                //labelInfo.Text = "Random operations already running. Press Esc to stop.";
+                // already running
                 return;
             }
 
@@ -351,7 +353,33 @@ namespace TesterGUI
             spacePressed = false;
             waitHandle.Reset();
             Task.Run(() => RandomOperationsLoop());
+
+            // keep original simple message (no auto/step explanatory text)
             labelInfo.Text = "Random operations started. Press Space to perform next operation, Esc to stop.";
+        }
+
+        private int GetTargetOperations()
+        {
+            int target = 0;
+            try
+            {
+                if (this.InvokeRequired)
+                {
+                    this.Invoke(() =>
+                    {
+                        int.TryParse(textBox1.Text, out target);
+                    });
+                }
+                else
+                {
+                    int.TryParse(textBox1.Text, out target);
+                }
+            }
+            catch
+            {
+                int.TryParse(textBox1.Text, out target);
+            }
+            return Math.Max(0, target);
         }
 
         private void RandomOperationsLoop()
@@ -360,6 +388,26 @@ namespace TesterGUI
             {
                 while (!stopRequested)
                 {
+                    int target = GetTargetOperations();
+
+                    // If target is zero -> step mode: wait for Space (or Esc)
+                    if (target == 0)
+                    {
+                        spacePressed = false;
+                        waitHandle.Reset();
+                        waitHandle.Wait();
+                        if (stopRequested)
+                            break;
+                    }
+                    else
+                    {
+                        // auto mode: stop when operationsCount reaches target
+                        if (operationsCount >= target)
+                            break;
+                    }
+
+                    // perform a single random operation
+                    operationsCount++;
                     int chance = rand.Next(0, 100);
                     if (chance < 60)
                     {
@@ -537,16 +585,12 @@ namespace TesterGUI
                         });
                     }
 
-                    spacePressed = false;
-                    waitHandle.Reset();
-                    waitHandle.Wait();
-
-                    if (stopRequested)
-                        break;
-
-                    // prepare for next iteration
-                    spacePressed = false;
-                    waitHandle.Reset();
+                    // in step mode, reset and wait next loop iteration will wait again
+                    if (GetTargetOperations() == 0)
+                    {
+                        spacePressed = false;
+                        waitHandle.Reset();
+                    }
                 }
             }
             finally
@@ -640,6 +684,8 @@ namespace TesterGUI
             {
                 label3.Text = "Free Blocks: N/A";
                 label4.Text = "Not Full Blocks: N/A";
+                label2.Text = "Block Count: N/A";
+                label5.Text = "Operations Count: N/A";
                 return;
             }
 
@@ -658,6 +704,8 @@ namespace TesterGUI
 
                 label3.Text = $"Free Blocks: {freeText}";
                 label4.Text = $"Not Full Blocks: {notFullText}";
+                label2.Text = $"Block Count: {heap.GetBlockCount()}";
+                label5.Text = $"Operations Count: {operationsCount}";
             }
             catch
             {

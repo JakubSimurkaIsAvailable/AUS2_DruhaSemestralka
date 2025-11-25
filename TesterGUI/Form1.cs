@@ -19,6 +19,9 @@ namespace TesterGUI
         private volatile bool stopRequested = false;
         private volatile bool spacePressed = false;
         private volatile bool randomRunning = false;
+        private string heapDataPath = string.Empty;
+        private string heapMetaPath = string.Empty;
+        private int recordSize = 150;
 
         public Form1()
         {
@@ -72,7 +75,10 @@ namespace TesterGUI
                 if (ofdMeta.ShowDialog() != DialogResult.OK) return;
 
                 heap?.Close();
-                heap = new Heap<Patient>(150, ofdData.FileName, ofdMeta.FileName);
+                heapDataPath = ofdData.FileName;
+                heapMetaPath = ofdMeta.FileName;
+
+                heap = new Heap<Patient>(recordSize, heapDataPath, heapMetaPath);
 
                 listMatrix.Clear();
                 int blockCount = heap.GetBlockCount();
@@ -678,6 +684,24 @@ namespace TesterGUI
             {
                 // ignore
             }
+            heap = new Heap<Patient>(recordSize, heapDataPath, heapMetaPath);
+            for (int i = 0; i < listMatrix.Count; i++)
+            {
+                var records = heap.GetAllRecordsInBlock(i);
+                if(records.Count() != listMatrix[i].Count)
+                {
+                    throw new Exception("Data mismatch on closing. Counts not equal");
+                    
+                }
+                for (int j = 0; j < records.Count(); j++)
+                {
+                    if(!records[j].Equals(listMatrix[i][j]))
+                    {
+                        throw new Exception("Data mismatch on closing. Records not equal");
+                    }
+                }
+            }
+            heap.Close();
             base.OnFormClosing(e);
         }
 

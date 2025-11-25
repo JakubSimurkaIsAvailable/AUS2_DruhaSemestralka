@@ -13,13 +13,14 @@ namespace Aus2_Heap
 
         string testFilePath = "C:\\Users\\Jakub\\source\\repos\\AUS2_DruhaSemestralka\\Aus2_Heap\\TesterData\\numbers.bin";
         string metaFilePath = "C:\\Users\\Jakub\\source\\repos\\AUS2_DruhaSemestralka\\Aus2_Heap\\TesterData\\metadata.bin";
+        int recordSize = 150;
         public Heap<Patient> heap;
         public List<long> ids = new List<long>();
         Random rand = new Random();
         List<List<Patient>> testDataList = new List<List<Patient>>();
         public Tester()
         {
-            heap = new Heap<Patient>(150, testFilePath, metaFilePath); 
+            heap = new Heap<Patient>(recordSize, testFilePath, metaFilePath); 
         }
         public void Run()
         {
@@ -199,6 +200,25 @@ namespace Aus2_Heap
                     break;
                 }
             }
+            heap = new Heap<Patient>(recordSize, testFilePath, metaFilePath);
+            for (int i = 0; i < testDataList.Count; i++)
+            {
+                var records = heap.GetAllRecordsInBlock(i);
+                if (records.Count != testDataList[i].Count)
+                {
+                    throw new Exception("ERROR: Record count mismatch after reopening heap!");
+                }
+                for (int j = 0; j < records.Count; j++)
+                {
+                    if (!records[j].Equals(testDataList[i][j]))
+                    {
+                        throw new Exception("ERROR: Record data mismatch after reopening heap!");
+                    }
+                }
+            }
+            heap.Close();
+            Console.Clear();
+            Console.WriteLine("All tests passed successfuly");
         }
     }
 }

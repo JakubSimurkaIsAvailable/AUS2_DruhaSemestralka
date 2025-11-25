@@ -38,6 +38,7 @@
             buttonLoad = new Button();
             label3 = new Label();
             label4 = new Label();
+            buttonCreate = new Button();
             SuspendLayout();
             // 
             // panelHeap
@@ -60,7 +61,7 @@
             // 
             // buttonAddRecord
             // 
-            buttonAddRecord.Location = new Point(590, 82);
+            buttonAddRecord.Location = new Point(560, 99);
             buttonAddRecord.Name = "buttonAddRecord";
             buttonAddRecord.Size = new Size(126, 23);
             buttonAddRecord.TabIndex = 3;
@@ -69,7 +70,7 @@
             // 
             // buttonRemoveRecord
             // 
-            buttonRemoveRecord.Location = new Point(590, 111);
+            buttonRemoveRecord.Location = new Point(560, 128);
             buttonRemoveRecord.Name = "buttonRemoveRecord";
             buttonRemoveRecord.Size = new Size(126, 23);
             buttonRemoveRecord.TabIndex = 4;
@@ -78,7 +79,7 @@
             // 
             // buttonGetRecord
             // 
-            buttonGetRecord.Location = new Point(590, 140);
+            buttonGetRecord.Location = new Point(560, 157);
             buttonGetRecord.Name = "buttonGetRecord";
             buttonGetRecord.Size = new Size(126, 23);
             buttonGetRecord.TabIndex = 5;
@@ -87,7 +88,7 @@
             // 
             // buttonRandomOperations
             // 
-            buttonRandomOperations.Location = new Point(590, 169);
+            buttonRandomOperations.Location = new Point(560, 186);
             buttonRandomOperations.Name = "buttonRandomOperations";
             buttonRandomOperations.Size = new Size(126, 23);
             buttonRandomOperations.TabIndex = 6;
@@ -105,7 +106,7 @@
             // 
             // buttonLoad
             // 
-            buttonLoad.Location = new Point(590, 49);
+            buttonLoad.Location = new Point(560, 66);
             buttonLoad.Name = "buttonLoad";
             buttonLoad.Size = new Size(126, 23);
             buttonLoad.TabIndex = 8;
@@ -130,11 +131,22 @@
             label4.TabIndex = 10;
             label4.Text = "label4";
             // 
+            // buttonCreate
+            // 
+            buttonCreate.Location = new Point(560, 35);
+            buttonCreate.Name = "buttonCreate";
+            buttonCreate.Size = new Size(126, 23);
+            buttonCreate.TabIndex = 11;
+            buttonCreate.Text = "Create File";
+            buttonCreate.UseVisualStyleBackColor = true;
+            buttonCreate.Click += buttonCreate_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            ClientSize = new Size(899, 450);
+            Controls.Add(buttonCreate);
             Controls.Add(label4);
             Controls.Add(label3);
             Controls.Add(buttonLoad);
@@ -163,5 +175,6 @@
         private Button buttonLoad;
         private Label label3;
         private Label label4;
+        private Button buttonCreate;
     }
 }

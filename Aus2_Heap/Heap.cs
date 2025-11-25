@@ -65,10 +65,6 @@ namespace Aus2_Heap
             fileStream = new FileStream(filePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             if (fileStream.Length > 0)
             {
-                if (fileStream.Length % blockSize != 0)
-                {
-                    //throw new InvalidDataException("Heap file length is not a multiple of block size.");
-                }
                 blockCount = (int)(fileStream.Length / blockSize);
             }
             else
@@ -82,33 +78,48 @@ namespace Aus2_Heap
             if (metaStream.Length > 0)
             {
                 metaStream.Seek(0, SeekOrigin.Begin);
-                using (var reader = new BinaryReader(metaStream, Encoding.UTF8, leaveOpen: true))
+                byte[] buffer = new byte[metaStream.Length];
+                int read = 0;
+                while (read < buffer.Length)
                 {
-                    try
+                    int r = metaStream.Read(buffer, read, buffer.Length - read);
+                    if (r == 0) break;
+                    read += r;
+                }
+
+                int offset = 0;
+                try
+                {
+                  
+                    int freeCount = BitConverter.ToInt32(buffer, offset);
+                    offset += 4;
+
+                    for (int i = 0; i < freeCount; i++)
                     {
-                        int freeCount = reader.ReadInt32();
-                        for (int i = 0; i < freeCount; i++)
-                        {
-                            int blokIndex = reader.ReadInt32();
-                            if (blokIndex >= 0 && blokIndex < blockCount)
-                                freeBlocks.Add(blokIndex);
-                        }
-                        int notFullCount = reader.ReadInt32();
-                        for (int i = 0; i < notFullCount; i++)
-                        {
-                            int blokIndex = reader.ReadInt32();
-                            if (blokIndex >= 0 && blokIndex < blockCount)
-                                notFullBlocks.Add(blokIndex);
-                        }
+                        
+                        int blokIndex = BitConverter.ToInt32(buffer, offset);
+                        offset += 4;
+                        if (blokIndex >= 0 && blokIndex < blockCount)
+                            freeBlocks.Add(blokIndex);
                     }
-                    catch (EndOfStreamException)
+                    int notFullCount = BitConverter.ToInt32(buffer, offset);
+                    offset += 4;
+
+                    for (int i = 0; i < notFullCount; i++)
                     {
-                        freeBlocks.Clear();
-                        notFullBlocks.Clear();
+                        
+                        int blokIndex = BitConverter.ToInt32(buffer, offset);
+                        offset += 4;
+                        if (blokIndex >= 0 && blokIndex < blockCount)
+                            notFullBlocks.Add(blokIndex);
                     }
                 }
+                catch (EndOfStreamException)
+                {
+                    freeBlocks.Clear();
+                    notFullBlocks.Clear();
+                }
             }
-
             freeBlocks.Sort();
             notFullBlocks.Sort();
         }
@@ -160,13 +171,11 @@ namespace Aus2_Heap
             if (notFullBlocks.Count > 0)
             {
                 index = notFullBlocks.First();
-                // read-modify-write
                 block = ReadBlock(index);
                 block.AddRecord(record);
                 
                 if (block.GetValidCount() == recordsPerBlock)
                 {
-                    // now full: remove from notFull list
                     notFullBlocks.RemoveAt(0);
                 }
                 WriteBlock(block);
@@ -177,7 +186,6 @@ namespace Aus2_Heap
                 block = ReadBlock(index);
                 block.AddRecord(record);
 
-                // remove from free, add to notFull
                 freeBlocks.RemoveAt(0);
                 if (block.GetValidCount() < recordsPerBlock)
                 {
@@ -188,12 +196,10 @@ namespace Aus2_Heap
             }
             else
             {
-                // create new block at end
                 index = blockCount;
                 block = new Block<T>(blockSize, recordSize, index);
                 block.AddRecord(record);
 
-                // append by writing at the new position (will extend file)
                 WriteBlock(block);
                 blockCount++;
                 if (block.GetValidCount() < recordsPerBlock)
@@ -202,8 +208,6 @@ namespace Aus2_Heap
                     notFullBlocks.Sort();
                 }
             }
-            //freeBlocks.Sort();
-            //notFullBlocks.Sort();
             return index;
         }
 
@@ -232,22 +236,18 @@ namespace Aus2_Heap
             int foundIndex = blockList.FindIndex(r => r.Equals(record));
             if (foundIndex < 0) throw new ArgumentOutOfRangeException($"Record was not found in block {id}");
 
-            // decrement valid count and swap removed with last valid element
             block.DecrementValidCount();
             int newValidCount = block.GetValidCount();
 
             if (newValidCount == 0)
             {
-                // become free
                 if (!freeBlocks.Contains(id))
                 {
                     freeBlocks.Add(id);
                     freeBlocks.Sort();
                 }
-                // ensure it's not in notFull
                 notFullBlocks.Remove(id);
 
-                // truncate trailing free blocks (remove from file end)
                 while (blockCount > 0 && freeBlocks.Count > 0 && freeBlocks.Last() == blockCount - 1)
                 {
                     int tailIndex = blockCount - 1;
@@ -259,15 +259,12 @@ namespace Aus2_Heap
             }
             else
             {
-                // make sure index is in notFullBlocks
                 if (!notFullBlocks.Contains(id))
                 {
                     notFullBlocks.Add(id);
                     notFullBlocks.Sort();
                 }
 
-                // swap the removed item with the element at position newValidCount
-                // (which previously held the "last valid" element)
                 if (foundIndex != newValidCount)
                 {
                     var temp = blockList[newValidCount];
@@ -276,7 +273,6 @@ namespace Aus2_Heap
                 }
             }
 
-            // write modified block back (unless its been truncated away)
             if (id < blockCount)
             {
                 WriteBlock(block);
@@ -295,8 +291,6 @@ namespace Aus2_Heap
             {
                 throw new InvalidOperationException("Heap is not open.");
             }
-
-            // ensure file length corresponds to current blockCount
             fileStream.SetLength((long)blockCount * blockSize);
             fileStream.Seek(0, SeekOrigin.Begin);
             fileStream.Flush();
@@ -309,19 +303,22 @@ namespace Aus2_Heap
 
             metaStream.SetLength(0);
             metaStream.Seek(0, SeekOrigin.Begin);
-            using (var writer = new BinaryWriter(metaStream, Encoding.UTF8, leaveOpen: true))
+
+            var bytes = new List<byte>();
+
+            bytes.AddRange(BitConverter.GetBytes(freeBlocks.Count));
+            foreach (var blockIndex in freeBlocks)
             {
-                writer.Write(freeBlocks.Count);
-                foreach (var blockIndex in freeBlocks)
-                {
-                    writer.Write(blockIndex);
-                }
-                writer.Write(notFullBlocks.Count);
-                foreach (var blockIndex in notFullBlocks)
-                {
-                    writer.Write(blockIndex);
-                }
+                bytes.AddRange(BitConverter.GetBytes(blockIndex));
             }
+            bytes.AddRange(BitConverter.GetBytes(notFullBlocks.Count));
+            foreach (var blockIndex in notFullBlocks)
+            {
+                bytes.AddRange(BitConverter.GetBytes(blockIndex));
+            }
+            var outArray = bytes.ToArray();
+            metaStream.Write(outArray, 0, outArray.Length);
+            metaStream.Flush();
 
             metaStream.Close();
             metaStream.Dispose();

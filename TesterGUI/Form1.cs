@@ -83,7 +83,7 @@ namespace TesterGUI
                 }
 
                 RenderHeapPanel();
-                
+
                 UpdateBlockMetaLabels();
                 labelInfo.Text = $"Loaded heap with {blockCount} blocks.";
             }
@@ -144,7 +144,7 @@ namespace TesterGUI
                 {
                     labelInfo.Text = "ERROR: Inserted value does not match retrieved value!";
                     RenderHeapPanel();
-                    
+
                     UpdateBlockMetaLabels();
                     return;
                 }
@@ -153,22 +153,22 @@ namespace TesterGUI
                 {
                     labelInfo.Text = "ERROR: Block count mismatch after insertion!";
                     RenderHeapPanel();
-                    
+
                     UpdateBlockMetaLabels();
                     return;
                 }
-                if(validCountBeforeInsert + 1 != heap.GetValidCountInBlock(addr))
+                if (validCountBeforeInsert + 1 != heap.GetValidCountInBlock(addr))
                 {
                     labelInfo.Text = "ERROR: Valid count in block mismatch after insertion!";
                     RenderHeapPanel();
-                    
+
                     UpdateBlockMetaLabels();
                     return;
                 }
 
 
                 RenderHeapPanel();
-                
+
                 UpdateBlockMetaLabels();
             }
             catch (Exception ex)
@@ -228,7 +228,7 @@ namespace TesterGUI
                 {
                     labelInfo.Text = "ERROR: Deleted value still retrievable!";
                     RenderHeapPanel();
-                    
+
                     UpdateBlockMetaLabels();
                     return;
                 }
@@ -241,7 +241,7 @@ namespace TesterGUI
                 {
                     labelInfo.Text = "ERROR: Block count mismatch after deletion!";
                     RenderHeapPanel();
-                    
+
                     UpdateBlockMetaLabels();
                     return;
                 }
@@ -249,10 +249,12 @@ namespace TesterGUI
                 try
                 {
                     validCountAfterDelete = heap.GetValidCountInBlock(blockIndex);
-                } catch{
-                    validCountBeforeDelete = 0;
                 }
-                if (validCountBeforeDelete - 1 != heap.GetValidCountInBlock(blockIndex))
+                catch
+                {
+                    validCountAfterDelete = 0;
+                }
+                if (validCountBeforeDelete - 1 != validCountAfterDelete)
                 {
                     labelInfo.Text = "ERROR: Valid count in block mismatch after deletion!";
                     RenderHeapPanel();
@@ -261,7 +263,7 @@ namespace TesterGUI
                     return;
                 }
                 RenderHeapPanel();
-                
+
                 UpdateBlockMetaLabels();
                 labelInfo.Text = $"Deleted {dataToDelete.Name} {dataToDelete.Surname} ({dataToDelete.UniqueID}) from block {blockIndex}.";
             }
@@ -376,7 +378,7 @@ namespace TesterGUI
 
                             listMatrix[addr].Add(patient);
                             RenderHeapPanel();
-                            
+
 
                             try
                             {
@@ -477,7 +479,7 @@ namespace TesterGUI
                                 }
 
                                 RenderHeapPanel();
-                                
+
                                 UpdateBlockMetaLabels();
                                 labelInfo.Text = $"Random Delete: {dataToDelete.Name} {dataToDelete.Surname} ({dataToDelete.UniqueID}) from block {addr}.";
                             }
@@ -677,6 +679,56 @@ namespace TesterGUI
                 // ignore
             }
             base.OnFormClosing(e);
+        }
+
+        private void buttonCreate_Click(object sender, EventArgs e)
+        {
+            using var fbd = new FolderBrowserDialog
+            {
+                Description = "Select folder to create heap.bin and header.bin"
+            };
+
+            if (fbd.ShowDialog() != DialogResult.OK)
+            {
+                labelInfo.Text = "Create cancelled.";
+                return;
+            }
+
+            string selected = fbd.SelectedPath;
+            string dataPath = Path.Combine(selected, "heap.bin");
+            string metaPath = Path.Combine(selected, "header.bin");
+
+            // if either exists, ask for overwrite confirmation
+            if (File.Exists(dataPath) || File.Exists(metaPath))
+            {
+                var result = MessageBox.Show(this,
+                    "One or both files already exist. Overwrite?",
+                    "Confirm overwrite",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2);
+
+                if (result != DialogResult.Yes)
+                {
+                    labelInfo.Text = "Create cancelled.";
+                    return;
+                }
+            }
+
+            try
+            {
+                // create empty files (truncate if exist)
+                using (var fs = File.Create(dataPath)) { }
+                using (var fs = File.Create(metaPath)) { }
+
+                labelInfo.Text = $"Created: {Path.GetFileName(dataPath)}, {Path.GetFileName(metaPath)} in {selected}";
+                UpdateBlockMetaLabels();
+            }
+            catch (Exception ex)
+            {
+                labelInfo.Text = $"Create failed: {ex.Message}";
+                UpdateBlockMetaLabels();
+            }
         }
     }
 }

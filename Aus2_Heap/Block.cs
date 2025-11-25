@@ -8,7 +8,7 @@ namespace Aus2_Heap
 {
     public class Block<T> : IBytes where T : IRecord
     {
-        private const int headerSize = 4;
+        
         private int validCount;
         private List<T> records;
         private int recordSize;
@@ -20,7 +20,7 @@ namespace Aus2_Heap
             validCount = 0;
             this.recordSize = recordSize;
             this.blockSize = blockSize;
-            capacity = (blockSize - headerSize) / recordSize;
+            capacity = (blockSize - sizeof(int)) / recordSize;
             records = new List<T>();
             this.index = index;
         }
@@ -68,7 +68,7 @@ namespace Aus2_Heap
                 throw new ArgumentException("Invalid byte array size");
             records.Clear();
             validCount = BitConverter.ToInt32(bytes, 0);
-            int offset = headerSize;
+            int offset = sizeof(int);
             for (int i = 0; i < capacity; i++)
             {
                 byte[] recordBytes = new byte[recordSize];
@@ -83,8 +83,8 @@ namespace Aus2_Heap
         public byte[] GetBytes()
         {
             byte[] result = new byte[blockSize];
-            Array.Copy(BitConverter.GetBytes(validCount), 0, result, 0, headerSize);
-            int offset = headerSize;
+            Array.Copy(BitConverter.GetBytes(validCount), 0, result, 0, sizeof(int));
+            int offset = sizeof(int);
             foreach (var record in records)
             {
                 byte[] recordBytes = record.GetBytes();

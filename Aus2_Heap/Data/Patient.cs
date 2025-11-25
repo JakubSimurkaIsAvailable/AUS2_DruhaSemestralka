@@ -36,7 +36,6 @@ namespace Aus2_Heap.Data
 
         public void FromBytes(byte[] bytes)
         {
-            // compute offsets from constants to avoid mistakes
             int offset = 0;
             int nameLength = BitConverter.ToInt32(bytes, offset);
             offset += sizeof(int);
@@ -56,7 +55,6 @@ namespace Aus2_Heap.Data
 
         public byte[] GetBytes()
         {
-            // pad strings to fixed character length, then encode with ASCII to guarantee 1 byte per char
             int nameLength = Name?.Length ?? 0;
             int surnameLength = Surname?.Length ?? 0;
             int uniqueIDLength = UniqueID?.Length ?? 0;
@@ -89,8 +87,7 @@ namespace Aus2_Heap.Data
 
         public int GetSize()
         {
-            // sizes are fixed: name + surname + long (8 bytes) + uniqueID
-            return NameSize + SurnameSize + sizeof(long) + UniqueIDSize;
+            return sizeof(int) + NameSize + sizeof(int) + SurnameSize + sizeof(long) + sizeof(int) + UniqueIDSize;
         }
     }
 }

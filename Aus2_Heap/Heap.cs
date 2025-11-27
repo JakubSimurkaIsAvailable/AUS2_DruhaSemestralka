@@ -241,7 +241,7 @@ namespace Aus2_Heap
             return index;
         }
 
-        public virtual T Get(int id, T record)
+        public T Get(int id, T record)
         {
             var block = ReadBlock(id);
             var value = block.GetRecords().Take(block.GetValidCount()).FirstOrDefault(r => r.Equals(record));

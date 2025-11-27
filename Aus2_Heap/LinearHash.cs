@@ -12,13 +12,14 @@ namespace Aus2_Heap
         private int splitPointer;
         private int groupCount;
         private int level = 0;
-        private int M = 4;
+        private int M = 2;
         private int maxValueCount;
         private int currentValueCount;
         private const double dmax = 0.8;
         private const double dmin = 0.64;
+
         public LinearHash(int blokSizeHash, int blockSizeOveflow, string pathHash, string metaPathHash,
-            string pathOverflow, string metaOverflow, bool manageFreeBlocks = false) 
+            string pathOverflow, string metaOverflow, bool manageFreeBlocks = false)
             : base(blokSizeHash, pathHash, metaPathHash, manageFreeBlocks)
         {
             overflowFile = new Heap<T>(blockSizeOveflow, pathOverflow, metaOverflow);
@@ -33,90 +34,166 @@ namespace Aus2_Heap
             }
             return result;
         }
+
+        
         public int Insert(T record)
         {
-            List<T> recordsToAdd = new List<T>();
-            recordsToAdd.Add(record);
+            var toProcess = new List<(T rec, bool increment)>();
+            toProcess.Add((record, true));
+
+            int lastAddress = -1;
+
+            for (int idx = 0; idx < toProcess.Count; idx++)
+            {
+                var (rec, incrementCount) = toProcess[idx];
+
+                int rawHash = rec.GetHashCode();
+
+                int Hu = M * PowerOfTwo(level);
+                int hashValue = rawHash % Hu;
+                if (hashValue < splitPointer)
+                {
+                    Hu = M * PowerOfTwo(level + 1);
+                    hashValue = rawHash % Hu;
+                }
+
+                int address = base.Insert(rec, hashValue);
+                if (address == -1)
+                {
+                    bool inserted = false;
+                    bool prevHash = true;
+                    int prevBlockIndex = hashValue;
+                    int overflowAddress = base.GetNextBlockIndex(hashValue);
+
+                    while (overflowAddress != -1)
+                    {
+                        if (overflowFile.Insert(rec, overflowAddress) != -1)
+                        {
+                            inserted = true;
+                            lastAddress = overflowAddress;
+                            break;
+                        }
+                        prevBlockIndex = overflowAddress;
+                        prevHash = false;
+                        overflowAddress = overflowFile.GetNextBlockIndex(overflowAddress);
+                    }
+
+                    if (!inserted)
+                    {
+                        int newOverflowAddress = overflowFile.Insert(rec);
+                        if (prevHash)
+                        {
+                            base.SetNextBlockIndex(prevBlockIndex, newOverflowAddress);
+                        }
+                        else
+                        {
+                            overflowFile.SetNextBlockIndex(prevBlockIndex, newOverflowAddress);
+                        }
+                        lastAddress = newOverflowAddress;
+                        maxValueCount += overflowFile.GetRecordsPerBlock();
+                    }
+                }
+                else
+                {
+                    lastAddress = address;
+                }
+
+                if (incrementCount)
+                {
+                    currentValueCount++;
+                }
+
+                double d = (double)currentValueCount / maxValueCount;
+                if (d > dmax)
+                {
+                    // perform one split (create new main block)
+                    base.CreateBlock();
+                    maxValueCount += base.GetRecordsPerBlock();
+
+                    // collect records from the bucket at splitPointer (main block)
+                    var recordsToRehash = new List<T>();
+                    recordsToRehash.AddRange(base.GetAllRecordsInBlock(splitPointer));
+
+                    // collect from overflow chain attached to this bucket
+                    int ovAddr = base.GetNextBlockIndex(splitPointer);
+                    while (ovAddr != -1)
+                    {
+                        var validRecords = overflowFile.GetAllRecordsInBlock(ovAddr);
+                        recordsToRehash.AddRange(validRecords);
+                        int nextOv = overflowFile.GetNextBlockIndex(ovAddr);
+
+                        // delete moved records from that overflow block
+                        for (int r = 0; r < validRecords.Count; r++)
+                        {
+                            overflowFile.Delete(ovAddr, validRecords[r]);
+                        }
+
+                        ovAddr = nextOv;
+                    }
+
+                    // delete records from the main block (they will be re-inserted)
+                    for (int r = 0; r < recordsToRehash.Count; r++)
+                    {
+                        base.Delete(splitPointer, recordsToRehash[r]);
+                    }
+
+                    for (int r = 0; r < recordsToRehash.Count; r++)
+                    {
+                        toProcess.Add((recordsToRehash[r], false));
+                    }
+
+                    // advance split pointer and possibly level
+                    splitPointer++;
+                    int splitThreshold = M * PowerOfTwo(level);
+                    if (splitPointer >= splitThreshold)
+                    {
+                        splitPointer = 0;
+                        level++;
+                    }
+
+                    // continue the for-loop: newly appended records will be processed
+                }
+            }
+
+            return lastAddress;
+        }
+
+        public void Delete(T record)
+        {
+
+        }
+
+        public T Get(T record)
+        {
             int Hu = M * PowerOfTwo(level);
-            int hashValue = record.GetHashCode() % Hu;
-            if(hashValue < splitPointer)
+            int id = record.GetHashCode() % Hu;
+            if (id < splitPointer)
             {
                 Hu = M * PowerOfTwo(level + 1);
-                hashValue = record.GetHashCode() % Hu;
+                id = record.GetHashCode() % Hu;
             }
-            int address = base.Insert(record, hashValue);
-            if (address == -1)
+            T value = default(T);
+            try
             {
-                bool inserted = false;
-                bool prevHash = true;
-                int prevBlockIndex = hashValue;
-                int overflowAddress = base.GetNextBlockIndex(hashValue);
+                value = base.Get(id, record);
+            }
+            catch (KeyNotFoundException)
+            {
+                int overflowAddress = base.GetNextBlockIndex(id);
                 while (overflowAddress != -1)
                 {
-                    if (overflowFile.Insert(record, overflowAddress) != -1) { inserted = true; break; };
-                    prevBlockIndex = overflowAddress;
-                    prevHash = false;
-                    overflowAddress = overflowFile.GetNextBlockIndex(overflowAddress);
-                }
-                if (!inserted)
-                {
-                    if (prevHash)
+                    try
                     {
-                        int newOverflowAddress = overflowFile.Insert(record);
-                        base.SetNextBlockIndex(prevBlockIndex, newOverflowAddress);
-                        address = newOverflowAddress;
+                        value = overflowFile.Get(overflowAddress, record);
+                        return value;
                     }
-                    else
+                    catch (KeyNotFoundException)
                     {
-                        int newOverflowAddress = overflowFile.Insert(record);
-                        overflowFile.SetNextBlockIndex(prevBlockIndex, newOverflowAddress);
-                        address = newOverflowAddress;
-                        
+                        overflowAddress = overflowFile.GetNextBlockIndex(overflowAddress);
                     }
-                    maxValueCount += overflowFile.recordsPerBlock;
                 }
             }
-            currentValueCount++;
-            double d = (double)currentValueCount / maxValueCount;
-            if (d > dmax)
-            {
-            }
-            return address;
-        }
-
-        public void AfterInsert()
-        {
-            int address = base.CreateBlock();
-            List<T> recordsToRehash = base.GetAllRecordsInBlock(splitPointer);
-            List<int> overflowPath = new List<int>();
-            int overflowAddress = base.GetNextBlockIndex(splitPointer);
-            while (overflowAddress != -1)
-            {
-                overflowPath.Add(overflowAddress);
-                var validRecords = overflowFile.GetAllRecordsInBlock(overflowAddress);
-                recordsToRehash.AddRange(validRecords);
-                int overflowAddressTemp = overflowFile.GetNextBlockIndex(overflowAddress);
-                for (int i = 0; i < validRecords.Count; i++)
-                {
-                    overflowFile.Delete(overflowAddress, validRecords[i]);
-                }
-                overflowAddress = overflowAddressTemp;
-            }
-            foreach(var record in recordsToRehash)
-            {
-
-            }
-            
-        }
-
-        public void Delete(T record, int address)
-        {
-
-        }
-
-        public T Get(int id, T record)
-        {
-            return base.Get(id, record);
+            throw new KeyNotFoundException("Record not found in Linear Hash.");
         }
     }
 }

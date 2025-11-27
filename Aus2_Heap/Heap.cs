@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -9,21 +10,22 @@ namespace Aus2_Heap
 {
     public class Heap<T> where T : IRecord
     {
-        private const int BlokHeaderSize = 4;
+        private const int BlokHeaderSize = 2*sizeof(int);
         private int blockSize;
         private readonly string filePath;
         private readonly string metaPath;
         private readonly int recordSize = Activator.CreateInstance<T>().GetSize();
-        private readonly int recordsPerBlock;
+        public readonly int recordsPerBlock;
         private FileStream fileStream;
         private FileStream metaStream;
-
+        private bool manageFreeBlocks;
         private int blockCount = 0;
         private List<int> freeBlocks = new List<int>();
         private List<int> notFullBlocks = new List<int>();
 
-        public Heap(int blokSize, string path, string metaPath)
+        public Heap(int blokSize, string path, string metaPath, bool manageFreeBlocks = true)
         {
+            this.manageFreeBlocks = manageFreeBlocks;
             blockSize = blokSize;
             filePath = path;
             this.metaPath = metaPath;
@@ -135,7 +137,7 @@ namespace Aus2_Heap
             }
             return blockCount;
         }
-        private Block<T> ReadBlock(int index)
+        protected Block<T> ReadBlock(int index)
         {
             if (index < 0 || index >= blockCount) throw new ArgumentOutOfRangeException(nameof(index));
             byte[] buffer = new byte[blockSize];
@@ -152,7 +154,7 @@ namespace Aus2_Heap
             return block;
         }
 
-        private void WriteBlock(Block<T> block)
+        protected void WriteBlock(Block<T> block)
         {
             byte[] data = block.GetBytes();
             if (data.Length != blockSize)
@@ -163,11 +165,39 @@ namespace Aus2_Heap
             fileStream.Flush();
         }
 
-        public int Insert(T record)
+        public int Insert(T record, int? insertIndex = null)
         {
             Block<T> block;
             int index;
-
+            if(insertIndex != null)
+            {
+                index = insertIndex.Value;
+                if (index < 0 || index >= blockCount) throw new ArgumentOutOfRangeException(nameof(index));
+                block = ReadBlock(index);
+                try
+                {
+                    
+                    block.AddRecord(record);
+                } catch (InvalidOperationException e)
+                {
+                    return -1;
+                }
+                
+                if (block.GetValidCount() == recordsPerBlock)
+                {
+                    notFullBlocks.Remove(index);
+                }
+                else
+                {
+                    if (!notFullBlocks.Contains(index))
+                    {
+                        notFullBlocks.Add(index);
+                        notFullBlocks.Sort();
+                    }
+                }
+                WriteBlock(block);
+                return index;
+            }
             if (notFullBlocks.Count > 0)
             {
                 index = notFullBlocks.First();
@@ -211,7 +241,7 @@ namespace Aus2_Heap
             return index;
         }
 
-        public T Get(int id, T record)
+        public virtual T Get(int id, T record)
         {
             var block = ReadBlock(id);
             var value = block.GetRecords().Take(block.GetValidCount()).FirstOrDefault(r => r.Equals(record));
@@ -247,15 +277,15 @@ namespace Aus2_Heap
                     freeBlocks.Sort();
                 }
                 notFullBlocks.Remove(id);
-
-                while (blockCount > 0 && freeBlocks.Count > 0 && freeBlocks.Last() == blockCount - 1)
+                int tailIndex = blockCount; 
+                while (blockCount > 0 && freeBlocks.Count > 0 && freeBlocks.Last() == blockCount - 1 && manageFreeBlocks)
                 {
-                    int tailIndex = blockCount - 1;
-                    fileStream.SetLength((long)tailIndex * blockSize);
+                    tailIndex = blockCount - 1;
                     blockCount--;
                     freeBlocks.RemoveAt(freeBlocks.Count - 1);
-                    notFullBlocks.Remove(tailIndex);
+                    //notFullBlocks.Remove(tailIndex);
                 }
+                fileStream.SetLength((long)tailIndex * blockSize);
             }
             else
             {
@@ -283,6 +313,45 @@ namespace Aus2_Heap
             if (id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
             var block = ReadBlock(id);
             return block.GetRecords().Take(block.GetValidCount()).ToList();
+        }
+        public int GetNextBlockIndex(int currentIndex)
+        {
+            if (currentIndex < 0 || currentIndex >= blockCount) throw new ArgumentOutOfRangeException(nameof(currentIndex));
+            var block = ReadBlock(currentIndex);
+            return block.GetNextBlockIndex();
+        }
+        public void SetNextBlockIndex(int currentIndex, int nextIndex)
+        {
+            if (currentIndex < 0 || currentIndex >= blockCount) throw new ArgumentOutOfRangeException(nameof(currentIndex));
+            var block = ReadBlock(currentIndex);
+            block.SetNextBlockIndex(nextIndex);
+            WriteBlock(block);
+        }
+        protected int CreateBlock()
+        {
+            var block = new Block<T>(blockSize, recordSize, blockCount);
+            WriteBlock(block);
+            blockCount++;
+            freeBlocks.Add(block.GetIndex());
+            freeBlocks.Sort();
+            return block.GetIndex();
+        }
+        protected void DeleteBlock(int index)
+        {
+            if (index < 0 || index >= blockCount) throw new ArgumentOutOfRangeException(nameof(index));
+            int tailIndex = blockCount; 
+            int validCount = ReadBlock(index).GetValidCount();
+            if (validCount > 0)
+            {
+                throw new InvalidOperationException($"There are still records inside block {index}");
+            }
+            if (blockCount > 0)
+            {
+                tailIndex = blockCount - 1;
+                blockCount--;
+                freeBlocks.RemoveAt(freeBlocks.Count - 1);
+            }
+            fileStream.SetLength((long)tailIndex * blockSize);
         }
 
         public void Close()

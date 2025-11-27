@@ -15,18 +15,56 @@ namespace Aus2_Heap
         private int blockSize;
         private int capacity;
         private int index;
-        public Block(int blockSize, int recordSize, int index)
+        private int nextBlockIndex;
+        private int deletedCount;
+        private int chainLength;
+        public Block(int blockSize, int recordSize, int index, int nextBlockIndex = -1, int chainLength = 0)
         {
             validCount = 0;
             this.recordSize = recordSize;
             this.blockSize = blockSize;
-            capacity = (blockSize - sizeof(int)) / recordSize;
+            capacity = (blockSize - 2* sizeof(int)) / recordSize;
             records = new List<T>();
             this.index = index;
+            this.nextBlockIndex = nextBlockIndex;
+            this.chainLength = chainLength;
+        }
+        public void IncrementDeletedCount()
+        {
+            deletedCount++;
+        }
+        public void FloorDeletedCount()
+        {
+            deletedCount = 0;
+        }
+        public void SetNextBlockIndex(int nextIndex)
+        {
+            nextBlockIndex = nextIndex;
+        }
+        public void IncreaseChainLength()
+        {
+            chainLength++;
+        }
+        public int GetChainLength()
+        {
+            return chainLength;
+        }
+        public void DecreaseChainLength()
+        {
+            if (chainLength > 0)
+                chainLength--;
+        }
+        public int GetDeletedCount()
+        {
+            return deletedCount;
         }
         public int GetValidCount()
         {
             return validCount;
+        }
+        public int GetNextBlockIndex()
+        {
+            return nextBlockIndex;
         }
         public void AddRecord(T record)
         {
@@ -69,6 +107,8 @@ namespace Aus2_Heap
             records.Clear();
             validCount = BitConverter.ToInt32(bytes, 0);
             int offset = sizeof(int);
+            nextBlockIndex = BitConverter.ToInt32(bytes, offset);
+            offset += sizeof(int);
             for (int i = 0; i < capacity; i++)
             {
                 byte[] recordBytes = new byte[recordSize];
@@ -85,6 +125,8 @@ namespace Aus2_Heap
             byte[] result = new byte[blockSize];
             Array.Copy(BitConverter.GetBytes(validCount), 0, result, 0, sizeof(int));
             int offset = sizeof(int);
+            Array.Copy(BitConverter.GetBytes(nextBlockIndex), 0, result, offset, sizeof(int));
+            offset += sizeof(int);
             foreach (var record in records)
             {
                 byte[] recordBytes = record.GetBytes();

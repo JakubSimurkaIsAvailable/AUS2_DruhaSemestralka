@@ -22,6 +22,7 @@ namespace Aus2_Heap
         private int blockCount = 0;
         private List<int> freeBlocks = new List<int>();
         private List<int> notFullBlocks = new List<int>();
+        private bool enableNotFullBlocksPrefference = true;
 
         public Heap(int blokSize, string path, string metaPath, bool manageFreeBlocks = true)
         {
@@ -32,6 +33,10 @@ namespace Aus2_Heap
             recordsPerBlock = (blockSize - BlokHeaderSize) / recordSize;
 
             LoadFromFile();
+        }
+        public void DisableNotFullBlocksPrefference()
+        {
+            enableNotFullBlocksPrefference = false;
         }
         public int GetRecordsPerBlock()
         {
@@ -167,6 +172,7 @@ namespace Aus2_Heap
 
         public int Insert(T record, int? insertIndex = null)
         {
+           
             Block<T> block;
             int index;
             if(insertIndex != null)
@@ -198,7 +204,7 @@ namespace Aus2_Heap
                 WriteBlock(block);
                 return index;
             }
-            if (notFullBlocks.Count > 0)
+            if (notFullBlocks.Count > 0 && enableNotFullBlocksPrefference)
             {
                 index = notFullBlocks.First();
                 block = ReadBlock(index);
@@ -239,6 +245,7 @@ namespace Aus2_Heap
                 }
             }
             return index;
+            
         }
 
         public T Get(int id, T record)
@@ -264,7 +271,7 @@ namespace Aus2_Heap
             var block = ReadBlock(id);
             var blockList = block.GetRecords();
             int foundIndex = blockList.FindIndex(r => r.Equals(record));
-            if (foundIndex < 0) throw new ArgumentOutOfRangeException($"Record was not found in block {id}");
+            if (foundIndex < 0) throw new KeyNotFoundException($"Record was not found in block {id}");
 
             block.DecrementValidCount();
             int newValidCount = block.GetValidCount();

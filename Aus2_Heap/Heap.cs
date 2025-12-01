@@ -264,6 +264,27 @@ namespace Aus2_Heap
             var block = ReadBlock(id);
             return block.GetValidCount();
         }
+        public int GetDeletedCountInBlock(int id)
+        {
+            if (id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
+            var block = ReadBlock(id);
+            return block.GetDeletedCount();
+        }
+        public void IncrementDeletedCountInBlock(int id)
+        {
+            if (id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
+            var block = ReadBlock(id);
+            block.IncrementDeletedCount();
+            WriteBlock(block);
+        }
+
+        public void FloorDeletedCountInBlock(int id)
+        {
+            if (id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
+            var block = ReadBlock(id);
+            block.FloorDeletedCount();
+            WriteBlock(block);
+        }
 
         public void Delete(int id, T record)
         {

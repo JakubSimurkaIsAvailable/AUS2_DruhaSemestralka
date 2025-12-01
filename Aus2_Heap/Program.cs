@@ -1,4 +1,4 @@
 ﻿using Aus2_Heap;
 
-Tester tester = new Tester();
+TestLinearHash tester = new TestLinearHash();
 tester.Run();

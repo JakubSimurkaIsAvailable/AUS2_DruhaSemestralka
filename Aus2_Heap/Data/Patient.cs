@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Aus2_Heap.Data
 {
-    public class Patient : IRecord
+    public class Patient : IRecord, IHash
     {
         private const int NameSize = 15;
         private const int SurnameSize = 14;
@@ -88,6 +88,15 @@ namespace Aus2_Heap.Data
         public int GetSize()
         {
             return sizeof(int) + NameSize + sizeof(int) + SurnameSize + sizeof(long) + sizeof(int) + UniqueIDSize;
+        }
+
+        public override int GetHashCode()
+        {
+            return UniqueID != null ? Math.Abs(UniqueID.GetHashCode(StringComparison.Ordinal)) : 0;
+        }
+        public override string ToString()
+        {
+            return $"Patient(Name: {Name}, Surname: {Surname}, BirthDate: {BirthDate.ToShortDateString()}, UniqueID: {UniqueID})";
         }
     }
 }

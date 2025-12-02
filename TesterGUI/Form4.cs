@@ -182,7 +182,8 @@ namespace TesterGUI
                         var got = linearHash.Get(patient);
                         if (!patient.Equals(got))
                             throw new Exception("Inserted value does not match retrieved value!");
-
+                        if (linearHash.CalculateMaxBlockIndex() != linearHash.GetBlockCount())
+                            throw new Exception("Block count is less than max block index after insert!");
                         liveRecords.Add(patient);
                         uids.Add(patient.UniqueID);
 

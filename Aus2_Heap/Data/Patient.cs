@@ -92,7 +92,7 @@ namespace Aus2_Heap.Data
 
         public override int GetHashCode()
         {
-            return UniqueID != null ? Math.Abs(UniqueID.GetHashCode(StringComparison.Ordinal)) : 0;
+            return int.Parse(UniqueID);
         }
         public override string ToString()
         {

@@ -10,7 +10,6 @@ namespace Aus2_Heap
     {
         private Heap<T> overflowFile;
         private int splitPointer;
-        private int groupCount;
         private int level = 0;
         private int M = 2;
         private int maxValueCount;
@@ -27,12 +26,72 @@ namespace Aus2_Heap
             maxValueCount = M * recordsPerBlock;
             currentValueCount = 0;
             splitPointer = 0;
-            groupCount = 0;
             level = 0;
-            for (int i = 0; i < M; i++)
+            if (GetBlockCount() == 0)
             {
-                base.CreateBlock();
+                for (int i = 0; i < M; i++)
+                {
+                    base.CreateBlock();
+                }
             }
+            else
+            {
+                try
+                {
+                    if (MetaBuffer != null && MetaExtraOffset < MetaBuffer.Length)
+                    {
+                        int offset = MetaExtraOffset;
+                        if (offset + 4 <= MetaBuffer.Length)
+                        {
+                            splitPointer = BitConverter.ToInt32(MetaBuffer, offset);
+                            offset += 4;
+                        }
+                        if (offset + 4 <= MetaBuffer.Length)
+                        {
+                            level = BitConverter.ToInt32(MetaBuffer, offset);
+                            offset += 4;
+                        }
+                        if (offset + 4 <= MetaBuffer.Length)
+                        {
+                            M = BitConverter.ToInt32(MetaBuffer, offset);
+                            offset += 4;
+                        }
+                    }
+                }
+                catch
+                {
+                    
+                }
+                maxValueCount = GetBlockCount() * recordsPerBlock + overflowFile.GetBlockCount() * overflowFile.GetRecordsPerBlock();
+
+                int cv = 0;
+                try
+                {
+                    for (int i = 0; i < GetBlockCount(); i++)
+                    {
+                        try { cv += GetValidCountInBlock(i); } catch { }
+                    }
+                    for (int i = 0; i < overflowFile.GetBlockCount(); i++)
+                    {
+                        try { cv += overflowFile.GetValidCountInBlock(i); } catch { }
+                    }
+                }
+                catch { }
+
+                currentValueCount = cv;
+            }
+        }
+        protected override byte[] GetExtraMetaBytes()
+        {
+            var bytes = new List<byte>();
+            bytes.AddRange(BitConverter.GetBytes(splitPointer));
+            bytes.AddRange(BitConverter.GetBytes(level));
+            bytes.AddRange(BitConverter.GetBytes(M));
+            return bytes.ToArray();
+        }
+        public int CalculateMaxBlockIndex()
+        {
+            return splitPointer + M * PowerOfTwo(level);
         }
         private int PowerOfTwo(int exp)
         {
@@ -98,7 +157,6 @@ namespace Aus2_Heap
             {
                 int newBlockIndex = base.CreateBlock();
                 maxValueCount += base.GetRecordsPerBlock();
-                // collect records from the bucket at splitPointer (main block)
                 var recordsToRehash = new List<T>();
                 
                 recordsToRehash.AddRange(base.GetAllRecordsInBlock(splitPointer));
@@ -106,7 +164,6 @@ namespace Aus2_Heap
                 {
                     base.Delete(splitPointer, recordsToRehash[r]);
                 }
-                // collect from overflow chain attached to this bucket
                 int ovAddr = base.GetNextBlockIndex(splitPointer);
                 base.SetNextBlockIndex(splitPointer, -1);
                 while (ovAddr != -1)
@@ -114,7 +171,6 @@ namespace Aus2_Heap
                     var validRecords = overflowFile.GetAllRecordsInBlock(ovAddr);
                     recordsToRehash.AddRange(validRecords);
                     int nextOv = overflowFile.GetNextBlockIndex(ovAddr);
-                    // delete moved records from that overflow block
                     for (int r = 0; r < validRecords.Count; r++)
                     {
                         overflowFile.Delete(ovAddr, validRecords[r]);
@@ -131,7 +187,6 @@ namespace Aus2_Heap
                     
                     ovAddr = nextOv;
                 }
-                //re-insert with Hu+1 mapping
                 int HuNew = M * PowerOfTwo(level + 1);
                 foreach(var rec in recordsToRehash)
                 {
@@ -204,6 +259,10 @@ namespace Aus2_Heap
                 id = record.GetHashCode() % Hu;
             }
             bool deleted = false;
+            int addressPrevious = -1;
+            int addressCurrent = -1;
+            int addressNext = -1;
+            bool prevHashFirst = true;
             try
             {
                 base.Delete(id, record);
@@ -212,18 +271,29 @@ namespace Aus2_Heap
             catch (KeyNotFoundException)
             {
                 int overflowAddress = base.GetNextBlockIndex(id);
+                addressPrevious = id;
                 while (overflowAddress != -1)
                 {
                     try
                     {
                         overflowFile.Delete(overflowAddress, record);
                         deleted = true;
+                        addressCurrent = overflowAddress;
+                        try
+                        {
+                            addressNext = overflowFile.GetNextBlockIndex(overflowAddress);
+                        } catch(ArgumentOutOfRangeException)
+                        {
+                            addressNext = -1;
+                        }
+                        
                         break;
                     }
                     catch (KeyNotFoundException)
                     {
+                        addressPrevious = overflowAddress;
                         overflowAddress = overflowFile.GetNextBlockIndex(overflowAddress);
-
+                        prevHashFirst = false;
                     }
                 }
             }
@@ -233,6 +303,33 @@ namespace Aus2_Heap
             } else
             {
                 base.IncrementDeletedCountInBlock(id);
+                if(addressCurrent > -1)
+                {
+                    int validCount = -1;
+                    try
+                    {
+                        validCount = overflowFile.GetValidCountInBlock(addressCurrent);
+                    } catch
+                    {
+                        validCount = -1;
+                    }
+                    if (prevHashFirst && validCount <= 0)
+                    {
+                        base.SetNextBlockIndex(addressPrevious, addressNext);
+                        
+                    } else if(!prevHashFirst && validCount <= 0)
+                    {
+                        overflowFile.SetNextBlockIndex(addressPrevious, addressNext);
+                        
+                    }
+                    try
+                    {
+                        overflowFile.SetNextBlockIndex(addressCurrent, -1);
+                    } catch
+                    {
+
+                    }
+                }
             }
             /*
             if(base.GetDeletedCountInBlock(id) >= overflowFile.GetRecordsPerBlock())
@@ -257,22 +354,18 @@ namespace Aus2_Heap
                     a = M * PowerOfTwo(level) - 1;
                     level--;
                 }
-                // collect records from block a (main block)
                 var recordsToRehash = new List<T>();
                 recordsToRehash.AddRange(base.GetAllRecordsInBlock(a));
                 int ovAddr = base.GetNextBlockIndex(a);
-                // delete records from the main block (they will be re-inserted)
                 for (int r = 0; r < recordsToRehash.Count; r++)
                 {
                     base.Delete(a, recordsToRehash[r]);
                 }
-                // collect from overflow chain attached to this bucket
                 while (ovAddr != -1)
                 {
                     var validRecords = overflowFile.GetAllRecordsInBlock(ovAddr);
                     recordsToRehash.AddRange(validRecords);
                     int nextOv = overflowFile.GetNextBlockIndex(ovAddr);
-                    // delete moved records from that overflow block
                     for (int r = 0; r < validRecords.Count; r++)
                     {
                         overflowFile.Delete(ovAddr, validRecords[r]);
@@ -373,17 +466,17 @@ namespace Aus2_Heap
                 sb.AppendLine($"  primary free blocks: {(freePrimary != null && freePrimary.Count > 0 ? string.Join(", ", freePrimary) : "None")}");
                 sb.AppendLine($"  primary not-full blocks: {(notFullPrimary != null && notFullPrimary.Count > 0 ? string.Join(", ", notFullPrimary) : "None")}");
             }
-            catch { /* ignore metadata errors */ }
+            catch { }
 
             sb.AppendLine();
-            sb.AppendLine("Primary buckets and overflow chains:");
+            sb.AppendLine("Primary blocks and overflow chains:");
 
             int primaryCount = 0;
             try { primaryCount = GetBlockCount(); } catch { primaryCount = 0; }
 
             for (int i = 0; i < primaryCount; i++)
             {
-                sb.AppendLine($"-- Bucket {i} --");
+                sb.AppendLine($"-- Block {i} --");
                 try
                 {
                     var records = GetAllRecordsInBlock(i);
@@ -397,8 +490,6 @@ namespace Aus2_Heap
                 {
                     sb.AppendLine($"   (could not read main block {i}: {ex.Message})");
                 }
-
-                // print overflow chain attached to this bucket (overflow indexes are stored in the main block's next index)
                 try
                 {
                     int ov = GetNextBlockIndex(i);
@@ -429,7 +520,6 @@ namespace Aus2_Heap
                             }
                             catch
                             {
-                                // if overflowFile.GetNextBlockIndex fails, break to avoid infinite loop
                                 break;
                             }
                             chainIdx++;
@@ -446,7 +536,6 @@ namespace Aus2_Heap
                 }
             }
 
-            // show any overflow blocks that are not referenced from primary buckets (orphaned overflow blocks)
             try
             {
                 var referenced = new HashSet<int>();
@@ -486,10 +575,15 @@ namespace Aus2_Heap
                     }
                 }
             }
-            catch { /* ignore orphan scan errors */ }
+            catch {  }
 
             return sb.ToString();
 
+        }
+        public override void Close()
+        {
+            base.Close();
+            overflowFile.Close();
         }
     }
     

@@ -24,6 +24,9 @@ namespace Aus2_Heap
         private List<int> notFullBlocks = new List<int>();
         private bool enableNotFullBlocksPrefference = true;
 
+        protected byte[] MetaBuffer { get; private set; }
+        protected int MetaExtraOffset { get; private set; }
+
         public Heap(int blokSize, string path, string metaPath, bool manageFreeBlocks = true)
         {
             this.manageFreeBlocks = manageFreeBlocks;
@@ -82,6 +85,8 @@ namespace Aus2_Heap
             metaStream = new FileStream(metaPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             freeBlocks.Clear();
             notFullBlocks.Clear();
+            MetaBuffer = null;
+            MetaExtraOffset = 0;
             if (metaStream.Length > 0)
             {
                 metaStream.Seek(0, SeekOrigin.Begin);
@@ -120,6 +125,8 @@ namespace Aus2_Heap
                         if (blokIndex >= 0 && blokIndex < blockCount)
                             notFullBlocks.Add(blokIndex);
                     }
+                    MetaBuffer = buffer;
+                    MetaExtraOffset = offset;
                 }
                 catch (EndOfStreamException)
                 {
@@ -200,6 +207,10 @@ namespace Aus2_Heap
                         notFullBlocks.Add(index);
                         notFullBlocks.Sort();
                     }
+                }
+                if(freeBlocks.Contains(index))
+                {
+                    freeBlocks.Remove(index);
                 }
                 WriteBlock(block);
                 return index;
@@ -382,7 +393,7 @@ namespace Aus2_Heap
             fileStream.SetLength((long)tailIndex * blockSize);
         }
 
-        public void Close()
+        public virtual void Close()
         {
             if (fileStream == null)
             {
@@ -413,6 +424,17 @@ namespace Aus2_Heap
             {
                 bytes.AddRange(BitConverter.GetBytes(blockIndex));
             }
+            try
+            {
+                var extra = GetExtraMetaBytes();
+                if (extra != null && extra.Length > 0)
+                    bytes.AddRange(extra);
+            }
+            catch
+            {
+                
+            }
+
             var outArray = bytes.ToArray();
             metaStream.Write(outArray, 0, outArray.Length);
             metaStream.Flush();
@@ -423,6 +445,10 @@ namespace Aus2_Heap
 
             fileStream.Dispose();
             fileStream = null;
+        }
+        protected virtual byte[] GetExtraMetaBytes()
+        {
+            return null;
         }
     }
 }

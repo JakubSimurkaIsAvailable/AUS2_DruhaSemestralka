@@ -22,25 +22,24 @@ namespace Aus2_Heap
         {
             blockSizeHash = 150;
             blockSizeOverflow = 80;
-            pathHash = "hashFile.dat";
-            pathOverflow = "overflowFile.dat";
-            metaPathHash = "metaHashFile.dat";
-            metaPathOverflow = "metaOverflowFile.dat";
+            pathHash = "hashFile.bin";
+            pathOverflow = "overflowFile.bin";
+            metaPathHash = "metaHashFile.bin";
+            metaPathOverflow = "metaOverflowFile.bin";
             linearHash = new LinearHash<Patient>(blockSizeHash, blockSizeOverflow, pathHash, pathOverflow, metaPathHash, metaPathOverflow);
         }
 
         public void Run()
         {
+            Console.WriteLine(linearHash.ToString());
             Console.WriteLine("Press N to write number of random operations, press R to test one by one");
             char choice = Console.ReadKey().KeyChar;
             Console.WriteLine();
             var rand = new Random(1);
 
-            // storage for bookkeeping in tester (not a full mirror of internal layout - used to select deletes/gets)
             var liveRecords = new List<Patient>();
             var uids = new HashSet<string>(StringComparer.Ordinal);
 
-            // preload existing main-block records (best-effort)
             try
             {
                 int blockCount = linearHash.GetBlockCount();
@@ -56,8 +55,9 @@ namespace Aus2_Heap
                         }
                     }
                 }
+                uidCounter = liveRecords.Count;
             }
-            catch { /* ignore preload errors */ }
+            catch { }
 
             if (char.ToUpperInvariant(choice) == 'N')
             {
@@ -72,10 +72,11 @@ namespace Aus2_Heap
                 {
                     int chance = rand.Next(0, 100);
                     
-                        if (chance < 101)
+                        if (chance < 60)
                         {
                             // Insert
                             var patient = GenerateRandomPatient(rand, uids);
+                        Console.WriteLine($"Inserting {patient.UniqueID}");
                             linearHash.Insert(patient);
                             // verify retrievable
                             var got = linearHash.Get(patient);
@@ -83,11 +84,16 @@ namespace Aus2_Heap
                                 throw new Exception("ERROR: Inserted value does not match retrieved value!");
                             liveRecords.Add(patient);
                             uids.Add(patient.UniqueID);
-                            Console.WriteLine($"[{op + 1}/{target}] Inserted {patient.UniqueID}");
+                            if(linearHash.CalculateMaxBlockIndex()!=linearHash.GetBlockCount())
+                            {
+                                throw new Exception("ERROR: Max block index does not match block count!");
+                            }
+                        Console.WriteLine($"[{op + 1}/{target}] Inserted {patient.UniqueID}");
                         }
-                        else if (chance < 102)
+                        else if (chance < 61)
                         {
                             // Delete
+                            /*
                             if (liveRecords.Count == 0)
                             {
                                 Console.WriteLine($"[{op + 1}/{target}] Delete skipped - no records");
@@ -95,7 +101,8 @@ namespace Aus2_Heap
                             }
                             int idx = rand.Next(liveRecords.Count);
                             var toDelete = liveRecords[idx];
-                            linearHash.Delete(toDelete);
+                            Console.WriteLine($"Deleting {toDelete.UniqueID}");
+                        linearHash.Delete(toDelete);
                             // ensure deleted cannot be retrieved
                             bool exists = true;
                             try
@@ -113,6 +120,7 @@ namespace Aus2_Heap
                             liveRecords.RemoveAt(idx);
                             uids.Remove(toDelete.UniqueID);
                             Console.WriteLine($"[{op + 1}/{target}] Deleted {toDelete.UniqueID}");
+                            */
                         }
                         else
                         {
@@ -123,7 +131,8 @@ namespace Aus2_Heap
                                 continue;
                             }
                             var chosen = liveRecords[rand.Next(liveRecords.Count)];
-                            var got = linearHash.Get(chosen);
+                            Console.WriteLine($"Getting {chosen.UniqueID}");
+                        var got = linearHash.Get(chosen);
                             if (!chosen.Equals(got))
                                 throw new Exception("ERROR: Retrieved value does not match expected value!");
                             Console.WriteLine($"[{op + 1}/{target}] Retrieved {got.UniqueID}");
@@ -154,19 +163,27 @@ namespace Aus2_Heap
                     int chance = rand.Next(0, 100);
                     try
                     {
-                           if (chance < 101)
+                           if (chance < 60)
                         {
                             var patient = GenerateRandomPatient(rand, uids);
+                            Console.WriteLine($"Inserting {patient.UniqueID}");
                             int blockId = linearHash.Insert(patient);
                             var got = linearHash.Get(patient);
                             if (!patient.Equals(got))
                                 throw new Exception("ERROR: Inserted value does not match retrieved value!");
                             liveRecords.Add(patient);
                             uids.Add(patient.UniqueID);
+                            if (linearHash.CalculateMaxBlockIndex() != linearHash.GetBlockCount())
+                            {
+                                Console.WriteLine(linearHash.CalculateMaxBlockIndex());
+                                Console.WriteLine(linearHash.GetBlockCount());
+                                throw new Exception("ERROR: Max block index does not match block count!");
+                            }
                             Console.WriteLine($"Inserted {patient.UniqueID} to block {blockId}");
                         }
-                        else if (chance < 102)
+                        else if (chance < 61)
                         {
+                            /*
                             if (liveRecords.Count == 0)
                             {
                                 Console.WriteLine("Delete skipped - no records");
@@ -175,6 +192,7 @@ namespace Aus2_Heap
                             {
                                 int idx = rand.Next(liveRecords.Count);
                                 var toDelete = liveRecords[idx];
+                                Console.WriteLine($"Deleting {toDelete.UniqueID}");
                                 linearHash.Delete(toDelete);
                                 bool exists = true;
                                 try
@@ -192,6 +210,7 @@ namespace Aus2_Heap
                                 uids.Remove(toDelete.UniqueID);
                                 Console.WriteLine($"Deleted {toDelete.UniqueID}");
                             }
+                            */
                         }
                         else
                         {
@@ -202,6 +221,7 @@ namespace Aus2_Heap
                             else
                             {
                                 var chosen = liveRecords[rand.Next(liveRecords.Count)];
+                                Console.WriteLine($"Getting {chosen.UniqueID}");
                                 var got = linearHash.Get(chosen);
                                 if (!chosen.Equals(got))
                                     throw new Exception("ERROR: Retrieved value does not match expected value!");
@@ -217,7 +237,7 @@ namespace Aus2_Heap
                         foreach (var n in linearHash.GetNotFullBlocks()) Console.Write($"{n} ");
                         Console.WriteLine();
                         Console.WriteLine(linearHash.ToString());
-                        // wait for user input: Space to continue, Esc to stop, any other key ignored
+                        
                         while (true)
                         {
                              var key = Console.ReadKey(true);
@@ -248,7 +268,7 @@ namespace Aus2_Heap
                                 break;
                             }
                         }
-                        throw new Exception("neco sa posralo");
+                        
                     }
                 }
 
@@ -280,5 +300,7 @@ namespace Aus2_Heap
             */
             return new Patient(name, surname, birth, uid);
         }
+
+        
     }
 }

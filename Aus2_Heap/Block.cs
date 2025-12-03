@@ -18,7 +18,9 @@ namespace Aus2_Heap
         private int nextBlockIndex;
         private int deletedCount;
         private int chainLength;
-        public Block(int blockSize, int recordSize, int index, int nextBlockIndex = -1, int chainLength = 0)
+        private bool writeNextBlockIndex;
+        private bool writeChainLength;
+        public Block(int blockSize, int recordSize, int index, int nextBlockIndex = -1, int chainLength = 0, bool writeNextBlockIndex = false, bool writeChainLength = false)
         {
             validCount = 0;
             this.recordSize = recordSize;
@@ -28,6 +30,43 @@ namespace Aus2_Heap
             this.index = index;
             this.nextBlockIndex = nextBlockIndex;
             this.chainLength = chainLength;
+            this.writeNextBlockIndex = writeNextBlockIndex;
+            this.writeChainLength = writeChainLength;
+        }
+        public void SetRecords(List<T> newRecords, int validCount)
+        {
+            if (newRecords.Count > capacity)
+                throw new ArgumentException("Too many records for this block");
+            this.records = newRecords;
+            this.validCount = validCount;
+        }
+        public void OverwriteBlock(List<T> records, int validCount)
+        {
+            if (records.Count > capacity)
+            {
+                throw new ArgumentException("Too many records for this block");
+            }
+            var currentRecords = GetRecords();
+            if (records.Count < validCount)
+            {
+                for (int i = records.Count; i < validCount; i++)
+                {
+                    currentRecords[i] = records[i];
+                }
+            }
+            else
+            {
+                currentRecords = records;
+            }
+            SetRecords(currentRecords, validCount);
+        }
+        public void EnableWriteNextBlockIndex()
+        {
+            this.writeNextBlockIndex = true;
+        }
+        public void EnableWriteChainLength()
+        {
+            this.writeChainLength = true;
         }
         public void IncrementDeletedCount()
         {
@@ -57,6 +96,10 @@ namespace Aus2_Heap
         public int GetDeletedCount()
         {
             return deletedCount;
+        }
+        public void SetChainLength(int length)
+        {
+            chainLength = length;
         }
         public int GetValidCount()
         {
@@ -107,8 +150,17 @@ namespace Aus2_Heap
             records.Clear();
             validCount = BitConverter.ToInt32(bytes, 0);
             int offset = sizeof(int);
-            nextBlockIndex = BitConverter.ToInt32(bytes, offset);
-            offset += sizeof(int);
+            if(writeNextBlockIndex)
+            {
+                nextBlockIndex = BitConverter.ToInt32(bytes, offset);
+                offset += sizeof(int);
+                
+            }
+            if(writeChainLength)
+            {
+                chainLength = BitConverter.ToInt32(bytes, offset);
+                offset += sizeof(int);
+            }
             for (int i = 0; i < capacity; i++)
             {
                 byte[] recordBytes = new byte[recordSize];
@@ -125,8 +177,16 @@ namespace Aus2_Heap
             byte[] result = new byte[blockSize];
             Array.Copy(BitConverter.GetBytes(validCount), 0, result, 0, sizeof(int));
             int offset = sizeof(int);
-            Array.Copy(BitConverter.GetBytes(nextBlockIndex), 0, result, offset, sizeof(int));
-            offset += sizeof(int);
+            if (writeNextBlockIndex)
+            {
+                Array.Copy(BitConverter.GetBytes(nextBlockIndex), 0, result, offset, sizeof(int));
+                offset += sizeof(int);
+            }
+            if (writeChainLength)
+            {
+                Array.Copy(BitConverter.GetBytes(chainLength), 0, result, offset, sizeof(int));
+                offset += sizeof(int);
+            }
             foreach (var record in records)
             {
                 byte[] recordBytes = record.GetBytes();

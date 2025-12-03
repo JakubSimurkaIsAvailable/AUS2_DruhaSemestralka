@@ -249,6 +249,56 @@ namespace Aus2_Heap
             return lastAddress;
         }
 
+        public void Split()
+        {
+            int newBlockIndex = base.CreateBlock();
+            maxValueCount += base.GetRecordsPerBlock();
+            List<T> recordsToRehash = new List<T>();
+            recordsToRehash.AddRange(base.GetAllRecordsInBlock(splitPointer));
+            int ovAddr = base.GetNextBlockIndex(splitPointer);
+            
+            while (ovAddr != -1)
+            {
+                var validRecords = overflowFile.GetAllRecordsInBlock(ovAddr);
+                recordsToRehash.AddRange(validRecords);
+                int nextOv = overflowFile.GetNextBlockIndex(ovAddr);
+                ovAddr = nextOv;
+            }
+            int HuNew = M * PowerOfTwo(level + 1);
+            List<T> oldValues = new List<T>();
+            List<T> newValues = new List<T>();
+            foreach (var rec in recordsToRehash)
+            {
+                int raw = rec.GetHashCode();
+                int hashVal = raw % HuNew;
+                if (hashVal == splitPointer)
+                {
+                    oldValues.Add(rec);
+                }
+                else
+                {
+                    newValues.Add(rec);
+                }
+            }
+            int newChainLength = (int)Math.Ceiling((decimal)(oldValues.Count - GetRecordsPerBlock()) / overflowFile.GetRecordsPerBlock());
+            var block = base.ReadBlock(splitPointer);
+            int ovBlockIndex = block.GetNextBlockIndex();
+            int oldChainLength = block.GetChainLength();
+            block.SetChainLength(newChainLength);
+            List<T> blockRecords = (List<T>)oldValues.Take(Math.Min(oldValues.Count, GetRecordsPerBlock()));
+            block.OverwriteBlock(blockRecords, blockRecords.Count);
+            if (newChainLength == 0)
+            {
+                block.SetNextBlockIndex(-1);
+            }
+            base.WriteBlock(block);
+            
+            
+
+
+        }
+
+
         public void Delete(T record)
         {
             int Hu = M * PowerOfTwo(level);
@@ -447,6 +497,43 @@ namespace Aus2_Heap
                 }
             }
             throw new KeyNotFoundException("Record not found in Linear Hash.");
+        }
+        public void Update(T record)
+        {
+            int Hu = M * PowerOfTwo(level);
+            int id = record.GetHashCode() % Hu;
+            if (id < splitPointer)
+            {
+                Hu = M * PowerOfTwo(level + 1);
+                id = record.GetHashCode() % Hu;
+            }
+            bool updated = false;
+            try
+            {
+                base.Update(id, record);
+                updated = true;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                int overflowAddress = base.GetNextBlockIndex(id);
+                while (overflowAddress != -1)
+                {
+                    try
+                    {
+                        overflowFile.Update(overflowAddress, record);
+                        updated = true;
+                        break;
+                    }
+                    catch (ArgumentOutOfRangeException)
+                    {
+                        overflowAddress = overflowFile.GetNextBlockIndex(overflowAddress);
+                    }
+                }
+            }
+            if (!updated)
+            {
+                throw new KeyNotFoundException("Record not found in Linear Hash.");
+            }
         }
         public override string ToString()
         {

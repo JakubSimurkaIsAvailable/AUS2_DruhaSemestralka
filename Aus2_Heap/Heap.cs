@@ -392,6 +392,17 @@ namespace Aus2_Heap
             }
             fileStream.SetLength((long)tailIndex * blockSize);
         }
+        
+        public void Update(int id, T record)
+        {
+            if (id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
+            var block = ReadBlock(id);
+            var blockList = block.GetRecords();
+            int foundIndex = blockList.FindIndex(r => r.Equals(record));
+            if (foundIndex < 0) throw new KeyNotFoundException($"Record was not found in block {id}");
+            blockList[foundIndex] = record;
+            WriteBlock(block);
+        }
 
         public virtual void Close()
         {

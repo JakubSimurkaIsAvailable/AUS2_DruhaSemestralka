@@ -29,6 +29,20 @@ namespace Aus2_Heap.Data
         }
         public PCR() { }
 
+        public PCR(DateTime datumACasTestu, string unikatneCisloPacienta, string poznamka, bool vysledokTestu, double hodnotaTestu)
+        {
+            DatumACasTestu = datumACasTestu;
+            UnikatneCisloPacienta = unikatneCisloPacienta;
+            Poznamka = poznamka;
+            VysledokTestu = vysledokTestu;
+            HodnotaTestu = hodnotaTestu;
+        }
+
+        public void SetKod(int kod)
+        {
+            UnikatnyKodTestu = kod;
+        }
+
         public bool Equals(IRecord other)
         {
             return UnikatnyKodTestu == ((PCR)other).UnikatnyKodTestu;

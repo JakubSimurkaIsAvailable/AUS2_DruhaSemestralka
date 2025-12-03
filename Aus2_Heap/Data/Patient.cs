@@ -19,8 +19,24 @@ namespace Aus2_Heap.Data
             Surname = surname;
             BirthDate = birthDate;
             UniqueID = uniqueID;
+            PCRTests = new int[6];
         }
         public Patient() { }
+        public Patient(string uniqueID)
+        {
+            UniqueID = uniqueID;
+        }
+        public Patient(string name, string surname, DateTime birthDate)
+        {
+            Name = name;
+            Surname = surname;
+            BirthDate = birthDate;
+            PCRTests = new int[6];
+        }
+        public void SetUID(string uid)
+        {
+            UniqueID = uid;
+        }
         // Max legth for name is 15 characters
         public string Name { get; set; }
         //Max length for surname is 14 characters
@@ -28,6 +44,7 @@ namespace Aus2_Heap.Data
         public DateTime BirthDate { get; set; }
         //Max length for uniqueID is 10 characters
         public string UniqueID { get; set; }
+        public int[] PCRTests { get; set; }
 
         public bool Equals(IRecord other)
         {
@@ -51,6 +68,14 @@ namespace Aus2_Heap.Data
             int uniqueIDLength = BitConverter.ToInt32(bytes, offset);
             offset += sizeof(int);
             UniqueID = FixedEncoding.GetString(bytes, offset, UniqueIDSize).Substring(0, uniqueIDLength);
+            offset += UniqueIDSize;
+            PCRTests = new int[6];
+            for (int i = 0; i < PCRTests.Length; i++)
+            {
+                PCRTests[i] = BitConverter.ToInt32(bytes, offset);
+                offset += sizeof(int);
+            }
+
         }
 
         public byte[] GetBytes()
@@ -82,6 +107,10 @@ namespace Aus2_Heap.Data
             byteList.AddRange(BitConverter.GetBytes(BirthDate.ToBinary()));
             byteList.AddRange(BitConverter.GetBytes(uniqueIDLength));
             byteList.AddRange(FixedEncoding.GetBytes(paddedUniqueID));
+            for (int i = 0; i < PCRTests.Length; i++)
+            {
+                byteList.AddRange(BitConverter.GetBytes(PCRTests[i]));
+            }
             return byteList.ToArray();
         }
 
@@ -93,6 +122,18 @@ namespace Aus2_Heap.Data
         public override int GetHashCode()
         {
             return int.Parse(UniqueID);
+        }
+        public void AddPCRTest(int testCode)
+        {
+            for (int i = 0; i < PCRTests.Length; i++)
+            {
+                if (PCRTests[i] == 0)
+                {
+                    PCRTests[i] = testCode;
+                    return;
+                }
+            }
+            throw new InvalidOperationException("No available slot for new PCR test.");
         }
         public override string ToString()
         {

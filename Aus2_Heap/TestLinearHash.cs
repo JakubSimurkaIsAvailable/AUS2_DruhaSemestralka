@@ -92,36 +92,14 @@ namespace Aus2_Heap
                         }
                         else if (chance < 61)
                         {
-                            // Delete
-                            /*
-                            if (liveRecords.Count == 0)
+                           //check all
+                           foreach (var rec in liveRecords)
                             {
-                                Console.WriteLine($"[{op + 1}/{target}] Delete skipped - no records");
-                                continue;
-                            }
-                            int idx = rand.Next(liveRecords.Count);
-                            var toDelete = liveRecords[idx];
-                            Console.WriteLine($"Deleting {toDelete.UniqueID}");
-                        linearHash.Delete(toDelete);
-                            // ensure deleted cannot be retrieved
-                            bool exists = true;
-                            try
-                            {
-                                var check = linearHash.Get(toDelete);
-                                exists = true;
-                            }
-                            catch
-                            {
-                                exists = false;
-                            }
-                            if (exists)
-                                throw new Exception("ERROR: Deleted value still retrievable!");
-                            // remove from bookkeeping
-                            liveRecords.RemoveAt(idx);
-                            uids.Remove(toDelete.UniqueID);
-                            Console.WriteLine($"[{op + 1}/{target}] Deleted {toDelete.UniqueID}");
-                            */
+                                var got = linearHash.Get(rec);
+                                if (!rec.Equals(got))
+                                    throw new Exception("ERROR: Retrieved value does not match expected value during full check!");
                         }
+                    }
                         else
                         {
                             // Get
@@ -183,34 +161,13 @@ namespace Aus2_Heap
                         }
                         else if (chance < 61)
                         {
-                            /*
-                            if (liveRecords.Count == 0)
+                            //check all
+                            foreach (var rec in liveRecords)
                             {
-                                Console.WriteLine("Delete skipped - no records");
+                                var got = linearHash.Get(rec);
+                                if (!rec.Equals(got))
+                                    throw new Exception("ERROR: Retrieved value does not match expected value during full check!");
                             }
-                            else
-                            {
-                                int idx = rand.Next(liveRecords.Count);
-                                var toDelete = liveRecords[idx];
-                                Console.WriteLine($"Deleting {toDelete.UniqueID}");
-                                linearHash.Delete(toDelete);
-                                bool exists = true;
-                                try
-                                {
-                                    var check = linearHash.Get(toDelete);
-                                    exists = true;
-                                }
-                                catch
-                                {
-                                    exists = false;
-                                }
-                                if (exists)
-                                    throw new Exception("ERROR: Deleted value still retrievable!");
-                                liveRecords.RemoveAt(idx);
-                                uids.Remove(toDelete.UniqueID);
-                                Console.WriteLine($"Deleted {toDelete.UniqueID}");
-                            }
-                            */
                         }
                         else
                         {

@@ -16,5 +16,10 @@ namespace TesterGUI
         {
             InitializeComponent();
         }
+
+        private void loadFilesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

@@ -70,6 +70,7 @@ namespace Aus2_Heap.Data
             Array.Copy(BitConverter.GetBytes(VysledokTestu), 0, bytes, offset, sizeof(bool));
             offset += sizeof(bool);
             Array.Copy(BitConverter.GetBytes(HodnotaTestu), 0, bytes, offset, sizeof(double));
+            offset += sizeof(double);
             return bytes;
         }
 
@@ -88,7 +89,7 @@ namespace Aus2_Heap.Data
             VysledokTestu = BitConverter.ToBoolean(bytes, offset);
             offset += sizeof(bool);
             HodnotaTestu = BitConverter.ToDouble(bytes, offset);
-            offset += sizeof(bool);
+            offset += sizeof(double);
         }
         public int GetHashCode()
         {

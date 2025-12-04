@@ -21,11 +21,6 @@ namespace Aus2_Heap.Data
             UniqueID = uniqueID;
             PCRTests = new int[6];
         }
-        public Patient() { }
-        public Patient(string uniqueID)
-        {
-            UniqueID = uniqueID;
-        }
         public Patient(string name, string surname, DateTime birthDate)
         {
             Name = name;
@@ -33,9 +28,18 @@ namespace Aus2_Heap.Data
             BirthDate = birthDate;
             PCRTests = new int[6];
         }
-        public void SetUID(string uid)
+        public void SetUID(string uniqueID)
         {
-            UniqueID = uid;
+            UniqueID = uniqueID;
+        }
+        public Patient() 
+        { 
+            PCRTests = new int[6];
+        }
+        public Patient(string uniqueID)
+        {
+            UniqueID = uniqueID;
+            PCRTests = new int[6];
         }
         // Max legth for name is 15 characters
         public string Name { get; set; }
@@ -116,7 +120,7 @@ namespace Aus2_Heap.Data
 
         public int GetSize()
         {
-            return sizeof(int) + NameSize + sizeof(int) + SurnameSize + sizeof(long) + sizeof(int) + UniqueIDSize;
+            return sizeof(int) + NameSize + sizeof(int) + SurnameSize + sizeof(long) + sizeof(int) + UniqueIDSize + (6 * sizeof(int));
         }
 
         public override int GetHashCode()

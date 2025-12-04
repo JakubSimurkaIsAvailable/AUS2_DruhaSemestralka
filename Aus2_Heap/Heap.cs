@@ -10,7 +10,7 @@ namespace Aus2_Heap
 {
     public class Heap<T> where T : IRecord
     {
-        private const int BlokHeaderSize = 2*sizeof(int);
+        private int BlokHeaderSize = sizeof(int);
         private int blockSize;
         private readonly string filePath;
         private readonly string metaPath;
@@ -23,16 +23,29 @@ namespace Aus2_Heap
         private List<int> freeBlocks = new List<int>();
         private List<int> notFullBlocks = new List<int>();
         private bool enableNotFullBlocksPrefference = true;
+        private bool enableWriteNextBlockIndex;
+        private bool enableWriteChainLength;
 
         protected byte[] MetaBuffer { get; private set; }
         protected int MetaExtraOffset { get; private set; }
 
-        public Heap(int blokSize, string path, string metaPath, bool manageFreeBlocks = true)
+        public Heap(int blokSize, string path, string metaPath, bool enableWriteNextBlockIndex, bool enableWriteChainLength, bool manageFreeBlocks = true)
         {
             this.manageFreeBlocks = manageFreeBlocks;
             blockSize = blokSize;
             filePath = path;
             this.metaPath = metaPath;
+            
+            this.enableWriteNextBlockIndex = enableWriteNextBlockIndex;
+            this.enableWriteChainLength = enableWriteChainLength;
+            if(this.enableWriteChainLength)
+            {
+                BlokHeaderSize += sizeof(int);
+            }
+            if(this.enableWriteNextBlockIndex)
+            {
+                BlokHeaderSize += sizeof(int);
+            }
             recordsPerBlock = (blockSize - BlokHeaderSize) / recordSize;
 
             LoadFromFile();
@@ -149,7 +162,7 @@ namespace Aus2_Heap
             }
             return blockCount;
         }
-        protected Block<T> ReadBlock(int index)
+        public Block<T> ReadBlock(int index)
         {
             if (index < 0 || index >= blockCount) throw new ArgumentOutOfRangeException(nameof(index));
             byte[] buffer = new byte[blockSize];
@@ -162,11 +175,13 @@ namespace Aus2_Heap
                 read += r;
             }
             var block = new Block<T>(blockSize, recordSize, index);
+            if(enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
+            if(enableWriteChainLength) block.EnableWriteChainLength();
             block.FromBytes(buffer);
             return block;
         }
 
-        protected void WriteBlock(Block<T> block)
+        public void WriteBlock(Block<T> block)
         {
             byte[] data = block.GetBytes();
             if (data.Length != blockSize)
@@ -245,6 +260,8 @@ namespace Aus2_Heap
             {
                 index = blockCount;
                 block = new Block<T>(blockSize, recordSize, index);
+                if(enableWriteChainLength) block.EnableWriteChainLength();
+                if(enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
                 block.AddRecord(record);
 
                 WriteBlock(block);
@@ -369,6 +386,8 @@ namespace Aus2_Heap
         protected int CreateBlock()
         {
             var block = new Block<T>(blockSize, recordSize, blockCount);
+            if(enableWriteChainLength) block.EnableWriteChainLength();
+            if(enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
             WriteBlock(block);
             blockCount++;
             freeBlocks.Add(block.GetIndex());

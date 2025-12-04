@@ -25,13 +25,18 @@ namespace Aus2_Heap
             validCount = 0;
             this.recordSize = recordSize;
             this.blockSize = blockSize;
-            capacity = (blockSize - 2* sizeof(int)) / recordSize;
+            
+            
             records = new List<T>();
             this.index = index;
             this.nextBlockIndex = nextBlockIndex;
             this.chainLength = chainLength;
             this.writeNextBlockIndex = writeNextBlockIndex;
             this.writeChainLength = writeChainLength;
+            int howManyInts = 1;
+            if (writeNextBlockIndex) howManyInts++;
+            if (writeChainLength) howManyInts++;
+            capacity = (blockSize - howManyInts * sizeof(int)) / recordSize;
         }
         public void SetRecords(List<T> newRecords, int validCount)
         {

@@ -20,8 +20,8 @@ namespace Aus2_Heap
 
         public TestLinearHash()
         {
-            blockSizeHash = 150;
-            blockSizeOverflow = 80;
+            blockSizeHash = 200;
+            blockSizeOverflow = 100;
             pathHash = "hashFile.bin";
             pathOverflow = "overflowFile.bin";
             metaPathHash = "metaHashFile.bin";

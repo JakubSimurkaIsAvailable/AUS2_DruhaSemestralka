@@ -411,6 +411,24 @@ namespace Aus2_Heap
             }
             fileStream.SetLength((long)tailIndex * blockSize);
         }
+        public void DeleteBlockWithId(int id)
+        {
+            if(id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
+            freeBlocks.Add(id);
+            freeBlocks.Sort();
+            Block<T> block = new Block<T>(blockSize, recordSize, id);
+            if(enableWriteChainLength) block.EnableWriteChainLength();
+            if(enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
+            WriteBlock(block);
+            while (blockCount > 0 && freeBlocks.Count > 0 && freeBlocks.Last() == blockCount - 1 && manageFreeBlocks)
+            {
+                int tailIndex = blockCount - 1;
+                blockCount--;
+                freeBlocks.RemoveAt(freeBlocks.Count - 1);
+            }
+            fileStream.SetLength((long)blockCount * blockSize);
+
+        }
         
         public void Update(int id, T record)
         {

@@ -80,7 +80,7 @@ namespace TesterGUI
                 heapDataPath = ofdData.FileName;
                 heapMetaPath = ofdMeta.FileName;
 
-                heap = new Heap<Patient>(recordSize, heapDataPath, heapMetaPath);
+                heap = new Heap<Patient>(recordSize, heapDataPath, heapMetaPath, false, false);
 
                 listMatrix.Clear();
                 int blockCount = heap.GetBlockCount();
@@ -732,7 +732,7 @@ namespace TesterGUI
             {
                 // ignore
             }
-            heap = new Heap<Patient>(recordSize, heapDataPath, heapMetaPath);
+            heap = new Heap<Patient>(recordSize, heapDataPath, heapMetaPath, false, false);
             for (int i = 0; i < listMatrix.Count; i++)
             {
                 var records = heap.GetAllRecordsInBlock(i);

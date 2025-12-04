@@ -62,8 +62,8 @@ namespace TesterGUI
             try
             {
                 // use same default sizes as TestLinearHash
-                int blockSizeHash = 150;
-                int blockSizeOverflow = 80;
+                int blockSizeHash = 200;
+                int blockSizeOverflow = 100;
 
                 linearHash = new LinearHash<Patient>(
                     blokSizeHash: blockSizeHash,

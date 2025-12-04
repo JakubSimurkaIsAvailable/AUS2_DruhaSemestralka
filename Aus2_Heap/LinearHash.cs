@@ -18,10 +18,11 @@ namespace Aus2_Heap
         private const double dmin = 0.64;
 
         public LinearHash(int blokSizeHash, int blockSizeOveflow, string pathHash, string metaPathHash,
-            string pathOverflow, string metaOverflow, bool manageFreeBlocks = false)
-            : base(blokSizeHash, pathHash, metaPathHash, manageFreeBlocks)
+            string pathOverflow, string metaOverflow, bool enableWriteNextBlockIndex = true, bool enableWriteChainLength = true,
+            bool manageFreeBlocks = false)
+            : base(blokSizeHash, pathHash, metaPathHash, enableWriteNextBlockIndex, enableWriteChainLength, manageFreeBlocks)
         {
-            overflowFile = new Heap<T>(blockSizeOveflow, pathOverflow, metaOverflow);
+            overflowFile = new Heap<T>(blockSizeOveflow, pathOverflow, metaOverflow, true, false);
             overflowFile.DisableNotFullBlocksPrefference();
             maxValueCount = M * recordsPerBlock;
             currentValueCount = 0;
@@ -153,6 +154,17 @@ namespace Aus2_Heap
             
             currentValueCount++;
             double d = (double)currentValueCount / maxValueCount;
+            while (d > dmax)
+            {
+                int value = Split(record);
+                if (value > -1)
+                {
+                    lastAddress = value;
+                }
+                d = (double)currentValueCount / maxValueCount;
+            }
+            return lastAddress;
+            /*
             while(d > dmax)
             {
                 int newBlockIndex = base.CreateBlock();
@@ -247,10 +259,12 @@ namespace Aus2_Heap
                 d = (double)currentValueCount / maxValueCount;
             }
             return lastAddress;
+            */
         }
 
-        public void Split()
+        public int Split(T record)
         {
+            int lastAddress = -1;
             int newBlockIndex = base.CreateBlock();
             maxValueCount += base.GetRecordsPerBlock();
             List<T> recordsToRehash = new List<T>();
@@ -280,22 +294,98 @@ namespace Aus2_Heap
                     newValues.Add(rec);
                 }
             }
+            if(oldValues.Contains(record))
+            {
+                lastAddress = splitPointer;
+            } else if(newValues.Contains(record))
+            {
+                lastAddress = newBlockIndex;
+            }
             int newChainLength = (int)Math.Ceiling((decimal)(oldValues.Count - GetRecordsPerBlock()) / overflowFile.GetRecordsPerBlock());
             var block = base.ReadBlock(splitPointer);
             int ovBlockIndex = block.GetNextBlockIndex();
             int oldChainLength = block.GetChainLength();
             block.SetChainLength(newChainLength);
-            List<T> blockRecords = (List<T>)oldValues.Take(Math.Min(oldValues.Count, GetRecordsPerBlock()));
+            List<T> blockRecords = oldValues.Take(Math.Min(oldValues.Count, GetRecordsPerBlock())).ToList();
             block.OverwriteBlock(blockRecords, blockRecords.Count);
             if (newChainLength == 0)
             {
                 block.SetNextBlockIndex(-1);
             }
             base.WriteBlock(block);
-            
-            
+            for(int i = 0; i < oldChainLength; i++)
+            {
+                var ovBlock = overflowFile.ReadBlock(ovBlockIndex);
+                if (i <  newChainLength)
+                {
+                    List<T> recordsToInsert = oldValues.Skip(GetRecordsPerBlock() + i * overflowFile.GetRecordsPerBlock()).Take(Math.Min(overflowFile.GetRecordsPerBlock(), oldValues.Count() - GetRecordsPerBlock() - i*overflowFile.GetRecordsPerBlock())).ToList();
+                    ovBlock.OverwriteBlock(recordsToInsert, recordsToInsert.Count);
+                } else
+                {
+                    ovBlockIndex = ovBlock.GetNextBlockIndex();
+                    bool empty = false;
+                    try
+                    {
+                        while(!empty)
+                        {
+                            ovBlock.DecrementValidCount();
+                            currentValueCount--;
+                        }
+                    } catch
+                    {
+                        empty = true;
+                    }
+                    ovBlock.SetNextBlockIndex(-1);
+                    maxValueCount -= overflowFile.GetRecordsPerBlock();
 
-
+                }
+                overflowFile.WriteBlock(ovBlock);
+            }
+            foreach(var rec in newValues)
+            {
+                int raw = rec.GetHashCode();
+                int hashVal = raw % HuNew;
+                int addr = base.Insert(rec, hashVal);
+                if (addr == -1)
+                {
+                    bool ins = false;
+                    bool prevH = true;
+                    int prevBlockIdx = hashVal;
+                    int overflowAddr = base.GetNextBlockIndex(hashVal);
+                    while (overflowAddr != -1)
+                    {
+                        if (overflowFile.Insert(rec, overflowAddr) != -1)
+                        {
+                            ins = true;
+                            break;
+                        }
+                        prevBlockIdx = overflowAddr;
+                        prevH = false;
+                        overflowAddr = overflowFile.GetNextBlockIndex(overflowAddr);
+                    }
+                    if (!ins)
+                    {
+                        int newOverflowAddr = overflowFile.Insert(rec);
+                        if (prevH)
+                        {
+                            base.SetNextBlockIndex(prevBlockIdx, newOverflowAddr);
+                        }
+                        else
+                        {
+                            overflowFile.SetNextBlockIndex(prevBlockIdx, newOverflowAddr);
+                        }
+                        maxValueCount += overflowFile.GetRecordsPerBlock();
+                    }
+                }
+            }
+            splitPointer++;
+            int splitThreshold = M * PowerOfTwo(level);
+            if (splitPointer >= splitThreshold)
+            {
+                splitPointer = 0;
+                level++;
+            }
+            return lastAddress;
         }
 
 

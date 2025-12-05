@@ -115,7 +115,7 @@ namespace Aus2_Heap
                 int offset = 0;
                 try
                 {
-                  
+                    blockSize = BitConverter.ToInt32(buffer, offset);
                     int freeCount = BitConverter.ToInt32(buffer, offset);
                     offset += 4;
 
@@ -461,7 +461,7 @@ namespace Aus2_Heap
             metaStream.Seek(0, SeekOrigin.Begin);
 
             var bytes = new List<byte>();
-
+            bytes.AddRange(BitConverter.GetBytes(blockSize));
             bytes.AddRange(BitConverter.GetBytes(freeBlocks.Count));
             foreach (var blockIndex in freeBlocks)
             {

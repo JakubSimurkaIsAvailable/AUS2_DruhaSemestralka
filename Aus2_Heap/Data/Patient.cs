@@ -125,7 +125,7 @@ namespace Aus2_Heap.Data
 
         public override int GetHashCode()
         {
-            return int.Parse(UniqueID);
+            return Math.Abs(UniqueID.GetHashCode());
         }
         public void AddPCRTest(int testCode)
         {

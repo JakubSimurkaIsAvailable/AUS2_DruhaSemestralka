@@ -19,20 +19,28 @@ namespace Aus2_Heap.Controller
         }
 
         // Insert from GUI -> model (clone input to avoid shared references)
+        // Return created patient (with UID assigned by model)
+        public Patient InsertPatient(Patient patientFromGui)
+        {
+            if (patientFromGui == null) throw new ArgumentNullException(nameof(patientFromGui));
+            var clone = ClonePatient(patientFromGui);
+            model.VlozOsobu(clone);
+            return ClonePatient(clone);
+        }
+
+        // Insert PCR test and return the created test (with assigned kod)
+        public PCR InsertPCRTest(PCR pcrFromGui)
+        {
+            if (pcrFromGui == null) throw new ArgumentNullException(nameof(pcrFromGui));
+            var clone = ClonePCR(pcrFromGui);
+            model.VlozPCRTest(clone);
+            return ClonePCR(clone);
+        }
+
+        // Insert generator data
         public void InsertGeneratorData(int numberOfPatients, int maxTestsPerPatient)
         {
             generator.Generate(numberOfPatients, maxTestsPerPatient);
-        }
-        public void InsertPatient(Patient patientFromGui)
-        {
-            if (patientFromGui == null) throw new ArgumentNullException(nameof(patientFromGui));
-            model.VlozOsobu(ClonePatient(patientFromGui));
-        }
-
-        public void InsertPCRTest(PCR pcrFromGui)
-        {
-            if (pcrFromGui == null) throw new ArgumentNullException(nameof(pcrFromGui));
-            model.VlozPCRTest(ClonePCR(pcrFromGui));
         }
 
         // Find and return copies for GUI (deep copies)
@@ -78,6 +86,19 @@ namespace Aus2_Heap.Controller
         public void LoadFiles() => model.NacitajZoSuborov();
         public void CreateFiles() => model.VytvorSubory();
         public void CloseSystem() => model.ZatvorSystem();
+
+        // allow GUI to set block sizes before creating files
+        public void SetPatientBlockSizes(int main, int overflow)
+        {
+            model.PatientHashBlockSize = main;
+            model.PatientHashOverflowBlockSize = overflow;
+        }
+
+        public void SetPCRBlockSizes(int main, int overflow)
+        {
+            model.PCRHashBlockSize = main;
+            model.PCROverflowBlockSize = overflow;
+        }
 
         // --- Private cloning helpers to ensure GUI never holds references to model instances ---
         private static Patient ClonePatient(Patient src)

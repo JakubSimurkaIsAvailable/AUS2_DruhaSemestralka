@@ -98,7 +98,6 @@
             loadFilesToolStripMenuItem.Name = "loadFilesToolStripMenuItem";
             loadFilesToolStripMenuItem.Size = new Size(180, 22);
             loadFilesToolStripMenuItem.Text = "Load Files";
-            loadFilesToolStripMenuItem.Click += loadFilesToolStripMenuItem_Click;
             // 
             // textBoxPatientMain
             // 

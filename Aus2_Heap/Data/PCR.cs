@@ -93,7 +93,7 @@ namespace Aus2_Heap.Data
         }
         public int GetHashCode()
         {
-            return UnikatneCisloPacienta != null ? UnikatneCisloPacienta.GetHashCode() : 0;
+            return UnikatnyKodTestu.GetHashCode();
         }
     }
 

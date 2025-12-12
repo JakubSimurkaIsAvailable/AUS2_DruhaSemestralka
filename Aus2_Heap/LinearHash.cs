@@ -342,7 +342,19 @@ namespace Aus2_Heap
             }
 
             currentValueCount++;
-
+            int primaryBlocks = base.GetBlockCount();
+            int overflowBlocks = overflowFile.GetBlockCount() - overflowFile.GetFreeBlocks().Count();
+            while (overflowBlocks > primaryBlocks / 2 * Math.Log(primaryBlocks))
+            { 
+                int value = Split(record);
+                if (value > -1)
+                {
+                    lastAddress = value;
+                }
+                primaryBlocks = base.GetBlockCount();
+                overflowBlocks = overflowFile.GetBlockCount() - overflowFile.GetFreeBlocks().Count();
+            }
+            /*
             double d = (double)currentValueCount / maxValueCount;
             while (d > dmax)
             {
@@ -353,6 +365,7 @@ namespace Aus2_Heap
                 }
                 d = (double)currentValueCount / maxValueCount;
             }
+            */
 
             return lastAddress;
         }

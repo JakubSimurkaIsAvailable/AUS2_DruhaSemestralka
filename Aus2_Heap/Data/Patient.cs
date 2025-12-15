@@ -12,6 +12,7 @@ namespace Aus2_Heap.Data
         private const int SurnameSize = 14;
         private const int UniqueIDSize = 10;
         private static readonly Encoding FixedEncoding = Encoding.ASCII;
+        private const int howManyPCRTests = 6;
 
         public Patient(string name, string surname, DateTime birthDate, string uniqueID)
         {
@@ -19,14 +20,14 @@ namespace Aus2_Heap.Data
             Surname = surname;
             BirthDate = birthDate;
             UniqueID = uniqueID;
-            PCRTests = new int[6];
+            PCRTests = new int[howManyPCRTests];
         }
         public Patient(string name, string surname, DateTime birthDate)
         {
             Name = name;
             Surname = surname;
             BirthDate = birthDate;
-            PCRTests = new int[6];
+            PCRTests = new int[howManyPCRTests];
         }
         public void SetUID(string uniqueID)
         {
@@ -34,7 +35,7 @@ namespace Aus2_Heap.Data
         }
         public Patient() 
         { 
-            PCRTests = new int[6];
+            PCRTests = new int[howManyPCRTests];
         }
         public Patient(string uniqueID)
         {
@@ -74,7 +75,7 @@ namespace Aus2_Heap.Data
             UniqueID = FixedEncoding.GetString(bytes, offset, UniqueIDSize).Substring(0, uniqueIDLength);
             offset += UniqueIDSize;
             PCRTests = new int[6];
-            for (int i = 0; i < PCRTests.Length; i++)
+            for (int i = 0; i < howManyPCRTests; i++)
             {
                 PCRTests[i] = BitConverter.ToInt32(bytes, offset);
                 offset += sizeof(int);
@@ -120,12 +121,13 @@ namespace Aus2_Heap.Data
 
         public int GetSize()
         {
-            return sizeof(int) + NameSize + sizeof(int) + SurnameSize + sizeof(long) + sizeof(int) + UniqueIDSize + (6 * sizeof(int));
+            return sizeof(int) + NameSize + sizeof(int) + SurnameSize + sizeof(long) + sizeof(int) + UniqueIDSize + (howManyPCRTests * sizeof(int));
         }
 
         public override int GetHashCode()
         {
-            return Math.Abs(UniqueID.GetHashCode());
+            int hash = int.Parse(UniqueID);
+            return Math.Abs(hash);
         }
         public void AddPCRTest(int testCode)
         {

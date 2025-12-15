@@ -95,6 +95,12 @@ namespace Aus2_Heap.Data
         {
             return UnikatnyKodTestu.GetHashCode();
         }
+
+
+        public override string ToString()
+        {
+            return $"PCR Test [Code: {UnikatnyKodTestu}, DateTime: {DatumACasTestu}, PatientID: {UnikatneCisloPacienta}, Note: {Poznamka}, Result: {VysledokTestu}, Value: {HodnotaTestu}]";
+        }
     }
 
 }

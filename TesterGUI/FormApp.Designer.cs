@@ -33,6 +33,15 @@
             dataToolStripMenuItem = new ToolStripMenuItem();
             createFilesToolStripMenuItem = new ToolStripMenuItem();
             loadFilesToolStripMenuItem = new ToolStripMenuItem();
+            closeFilesToolStripMenuItem = new ToolStripMenuItem();
+            generateToolStripMenuItem = new ToolStripMenuItem();
+            viewToolStripMenuItem = new ToolStripMenuItem();
+            patientToolStripMenuItem = new ToolStripMenuItem();
+            sequentialToolStripMenuItem = new ToolStripMenuItem();
+            continuousToolStripMenuItem = new ToolStripMenuItem();
+            pCRToolStripMenuItem = new ToolStripMenuItem();
+            sequentialToolStripMenuItem1 = new ToolStripMenuItem();
+            continuousToolStripMenuItem1 = new ToolStripMenuItem();
             textBoxPatientMain = new TextBox();
             textBoxPatientOverflow = new TextBox();
             textBoxPCRMain = new TextBox();
@@ -46,7 +55,6 @@
             labelPatient = new Label();
             labelPCR = new Label();
             buttonInsertTest = new Button();
-            closeFilesToolStripMenuItem = new ToolStripMenuItem();
             buttonGetPatient = new Button();
             buttonGetTest = new Button();
             buttonInsertPatient = new Button();
@@ -73,7 +81,7 @@
             // 
             // menuStrip1
             // 
-            menuStrip1.Items.AddRange(new ToolStripItem[] { dataToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { dataToolStripMenuItem, viewToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(985, 24);
@@ -82,7 +90,7 @@
             // 
             // dataToolStripMenuItem
             // 
-            dataToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { createFilesToolStripMenuItem, loadFilesToolStripMenuItem, closeFilesToolStripMenuItem });
+            dataToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { createFilesToolStripMenuItem, loadFilesToolStripMenuItem, closeFilesToolStripMenuItem, generateToolStripMenuItem });
             dataToolStripMenuItem.Name = "dataToolStripMenuItem";
             dataToolStripMenuItem.Size = new Size(43, 20);
             dataToolStripMenuItem.Text = "Data";
@@ -90,14 +98,76 @@
             // createFilesToolStripMenuItem
             // 
             createFilesToolStripMenuItem.Name = "createFilesToolStripMenuItem";
-            createFilesToolStripMenuItem.Size = new Size(180, 22);
+            createFilesToolStripMenuItem.Size = new Size(134, 22);
             createFilesToolStripMenuItem.Text = "Create Files";
             // 
             // loadFilesToolStripMenuItem
             // 
             loadFilesToolStripMenuItem.Name = "loadFilesToolStripMenuItem";
-            loadFilesToolStripMenuItem.Size = new Size(180, 22);
+            loadFilesToolStripMenuItem.Size = new Size(134, 22);
             loadFilesToolStripMenuItem.Text = "Load Files";
+            // 
+            // closeFilesToolStripMenuItem
+            // 
+            closeFilesToolStripMenuItem.Name = "closeFilesToolStripMenuItem";
+            closeFilesToolStripMenuItem.Size = new Size(134, 22);
+            closeFilesToolStripMenuItem.Text = "Close Files";
+            // 
+            // generateToolStripMenuItem
+            // 
+            generateToolStripMenuItem.Name = "generateToolStripMenuItem";
+            generateToolStripMenuItem.Size = new Size(134, 22);
+            generateToolStripMenuItem.Text = "Generate";
+            generateToolStripMenuItem.Click += generateToolStripMenuItem_Click;
+            // 
+            // viewToolStripMenuItem
+            // 
+            viewToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { patientToolStripMenuItem, pCRToolStripMenuItem });
+            viewToolStripMenuItem.Name = "viewToolStripMenuItem";
+            viewToolStripMenuItem.Size = new Size(44, 20);
+            viewToolStripMenuItem.Text = "View";
+            // 
+            // patientToolStripMenuItem
+            // 
+            patientToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { sequentialToolStripMenuItem, continuousToolStripMenuItem });
+            patientToolStripMenuItem.Name = "patientToolStripMenuItem";
+            patientToolStripMenuItem.Size = new Size(180, 22);
+            patientToolStripMenuItem.Text = "Patient";
+            // 
+            // sequentialToolStripMenuItem
+            // 
+            sequentialToolStripMenuItem.Name = "sequentialToolStripMenuItem";
+            sequentialToolStripMenuItem.Size = new Size(136, 22);
+            sequentialToolStripMenuItem.Text = "Sequential";
+            sequentialToolStripMenuItem.Click += sequentialToolStripMenuItem_Click;
+            // 
+            // continuousToolStripMenuItem
+            // 
+            continuousToolStripMenuItem.Name = "continuousToolStripMenuItem";
+            continuousToolStripMenuItem.Size = new Size(136, 22);
+            continuousToolStripMenuItem.Text = "Continuous";
+            continuousToolStripMenuItem.Click += continuousToolStripMenuItem_Click;
+            // 
+            // pCRToolStripMenuItem
+            // 
+            pCRToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { sequentialToolStripMenuItem1, continuousToolStripMenuItem1 });
+            pCRToolStripMenuItem.Name = "pCRToolStripMenuItem";
+            pCRToolStripMenuItem.Size = new Size(180, 22);
+            pCRToolStripMenuItem.Text = "PCR";
+            // 
+            // sequentialToolStripMenuItem1
+            // 
+            sequentialToolStripMenuItem1.Name = "sequentialToolStripMenuItem1";
+            sequentialToolStripMenuItem1.Size = new Size(180, 22);
+            sequentialToolStripMenuItem1.Text = "Sequential";
+            sequentialToolStripMenuItem1.Click += sequentialToolStripMenuItem1_Click;
+            // 
+            // continuousToolStripMenuItem1
+            // 
+            continuousToolStripMenuItem1.Name = "continuousToolStripMenuItem1";
+            continuousToolStripMenuItem1.Size = new Size(180, 22);
+            continuousToolStripMenuItem1.Text = "Continuous";
+            continuousToolStripMenuItem1.Click += continuousToolStripMenuItem1_Click;
             // 
             // textBoxPatientMain
             // 
@@ -213,12 +283,6 @@
             buttonInsertTest.TabIndex = 10;
             buttonInsertTest.Text = "PCR test";
             buttonInsertTest.UseVisualStyleBackColor = true;
-            // 
-            // closeFilesToolStripMenuItem
-            // 
-            closeFilesToolStripMenuItem.Name = "closeFilesToolStripMenuItem";
-            closeFilesToolStripMenuItem.Size = new Size(180, 22);
-            closeFilesToolStripMenuItem.Text = "Close Files";
             // 
             // buttonGetPatient
             // 
@@ -387,5 +451,13 @@
         private Label label8;
         private Label label9;
         private Label label10;
+        private ToolStripMenuItem generateToolStripMenuItem;
+        private ToolStripMenuItem viewToolStripMenuItem;
+        private ToolStripMenuItem patientToolStripMenuItem;
+        private ToolStripMenuItem pCRToolStripMenuItem;
+        private ToolStripMenuItem sequentialToolStripMenuItem;
+        private ToolStripMenuItem continuousToolStripMenuItem;
+        private ToolStripMenuItem sequentialToolStripMenuItem1;
+        private ToolStripMenuItem continuousToolStripMenuItem1;
     }
 }

@@ -46,6 +46,20 @@ namespace TesterGUI
             buttonGetTest.Click += ButtonGetTest_Click;
             buttonEditPatient.Click += ButtonEditPatient_Click;
             buttonEditTest.Click += ButtonEditTest_Click;
+
+            this.FormClosing += FormApp_FormClosing;
+        }
+
+        private void FormApp_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            try
+            {
+                controller.CloseSystem();
+            }
+            catch
+            {
+                // best-effort close: swallow exceptions so the UI can exit cleanly
+            }
         }
 
         // CREATE FILES: validate block size textboxes contain positive integers, set sizes then open create dialog
@@ -85,6 +99,12 @@ namespace TesterGUI
             {
                 txtPanelView.Text = $"Load failed: {ex.Message}";
             }
+            (int pMain, int pOverflow) = controller.GetPatientBlockSizes();
+            (int tMain, int tOverflow) = controller.GetPCRBlockSizes();
+            textBoxPatientMain.Text = pMain.ToString();
+            textBoxPatientOverflow.Text = pOverflow.ToString();
+            textBoxPCRMain.Text = tMain.ToString();
+            textBoxPCROverflow.Text = tOverflow.ToString();
         }
 
         private void CloseFilesToolStripMenuItem_Click(object? sender, EventArgs e)
@@ -140,6 +160,7 @@ namespace TesterGUI
                 if (dlg.ShowDialog(this) != DialogResult.OK) return;
 
                 var edited = (dlg as FormAddPerson)!.Result;
+                edited.PCRTests = patientForEdit.PCRTests;
                 controller.UpdatePatient(edited);
 
                 var (p, tests) = controller.FindPatient(edited.UniqueID);
@@ -284,6 +305,42 @@ namespace TesterGUI
             if (res == DialogResult.OK)
                 return txt.Text;
             return null;
+        }
+
+        private void generateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            controller.InsertGeneratorData(20, 5);
+        }
+
+
+        private void sequentialToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            txtPanelView.Clear();
+            txtPanelView.Text = controller.ReturnPacientToString();
+        }
+
+        private void continuousToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            txtPanelView.Clear();
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine(controller.ReturnPacientMainInfo());
+            sb.AppendLine(controller.ReturnPacientOverflowInfo());
+            txtPanelView.Text = sb.ToString();
+        }
+
+        private void sequentialToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            txtPanelView.Clear();
+            txtPanelView.Text = controller.ReturnPCRToString();
+        }
+
+        private void continuousToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            txtPanelView.Clear();
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine(controller.ReturnPCRMainInfo());
+            sb.AppendLine(controller.ReturnPCROverflowInfo());
+            txtPanelView.Text = sb.ToString();
         }
     }
 }

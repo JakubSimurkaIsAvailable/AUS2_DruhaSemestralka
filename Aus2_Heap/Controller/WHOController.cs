@@ -10,7 +10,7 @@ namespace Aus2_Heap.Controller
     public sealed class WHOController
     {
         readonly WHO model;
-        public Generator generator;
+        private Generator generator;
 
         public WHOController()
         {
@@ -100,6 +100,15 @@ namespace Aus2_Heap.Controller
             model.PCROverflowBlockSize = overflow;
         }
 
+        public (int patientHashBlockSize, int patientOverflowBlockSize) GetPatientBlockSizes()
+        {
+            return (model.PatientHashBlockSize, model.PatientHashOverflowBlockSize);
+        }
+        public (int pcrHashBlockSize, int pcrOverflowBlockSize) GetPCRBlockSizes()
+        {
+            return (model.PCRHashBlockSize, model.PCROverflowBlockSize);
+        }
+
         // --- Private cloning helpers to ensure GUI never holds references to model instances ---
         private static Patient ClonePatient(Patient src)
         {
@@ -110,7 +119,7 @@ namespace Aus2_Heap.Controller
                 Surname = src.Surname,
                 BirthDate = src.BirthDate,
                 UniqueID = src.UniqueID,
-                PCRTests = src.PCRTests != null ? (int[])src.PCRTests.Clone() : new int[6]
+                PCRTests = src.PCRTests
             };
             return clone;
         }
@@ -172,5 +181,41 @@ namespace Aus2_Heap.Controller
             sb.AppendLine("----------------------");
             return sb.ToString();
         }
+
+        public string ReturnSystemInfo()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("SYSTEMOVE INFORMACIE:");
+            sb.AppendLine("======================");
+            sb.AppendLine($"Pocet pacientov v systeme: {model.pacientCounter}");
+            sb.AppendLine($"Pocet PCR testov v systeme: {model.pcrTestCounter}");
+            sb.AppendLine("======================");
+            return sb.ToString();
+        }
+
+        public string ReturnPacientMainInfo()
+        {
+            return model.ReturnPatientMainFileInfo();
+        }
+        public string ReturnPCRMainInfo()
+        {
+            return model.ReturnPCRMainFileInfo();
+        }
+        public string ReturnPacientOverflowInfo()
+        {
+            return model.ReturnPatientOverflowFileInfo();
+        }
+        public string ReturnPCROverflowInfo()
+        {
+            return model.ReturnPCROverflowFileInfo();
+        }
+        public string ReturnPacientToString()
+        {
+            return model.ReturnPatientToString();
+        }
+        public string ReturnPCRToString()
+        {
+            return model.ReturnPCRToString();
+        }
     }
-}
+    }

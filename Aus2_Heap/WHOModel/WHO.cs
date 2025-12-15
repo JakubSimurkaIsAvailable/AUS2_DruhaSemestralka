@@ -23,13 +23,14 @@ namespace Aus2_Heap.PacientModel
         public int PCRHashBlockSize = 512;
         public int PCROverflowBlockSize = 512;
         LinearHash<PCR> pcrTesty;
+        private string modelMetadataFile = "model_metadata.bin";
 
         public int pcrTestCounter = 1;
         public int pacientCounter = 1;
 
         public WHO()
         {
-            
+
         }
 
         //1. Vlozenie vysledku PCR testu do systemu (system zabezpeci unikatnost kodu PCR testu ale neoveruje ju)
@@ -37,7 +38,15 @@ namespace Aus2_Heap.PacientModel
         {
             test.SetKod(pcrTestCounter);
             pcrTestCounter++;
-            var pacient = pacienti.Get(new Patient(test.UnikatneCisloPacienta));
+            Patient pacient;
+            try
+            {
+                pacient = pacienti.Get(new Patient(test.UnikatneCisloPacienta));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                throw new ArgumentException("Pacient s danym unikatnym cislom neexistuje.", ex);
+            }
             pacient.AddPCRTest(test.UnikatnyKodTestu);
             pacienti.Update(pacient);
             pcrTesty.Insert(test);
@@ -70,7 +79,7 @@ namespace Aus2_Heap.PacientModel
         //4. Vlozenie osoby do systemu (system zabezpeci unikatnost cislo pacienta ale neoveruje ju)
         public void VlozOsobu(Patient pacient)
         {
-            string uid = pacientCounter.ToString().PadLeft(10, '0');
+            string uid = pacientCounter.ToString();
             pacient.SetUID(uid);
             pacientCounter++;
             pacienti.Insert(pacient);
@@ -120,10 +129,12 @@ namespace Aus2_Heap.PacientModel
             PCRHashMetadataFilePath = Path.Combine(folder, Path.GetFileName(PCRHashMetadataFilePath));
             PCROverflowMetadataFilePath = Path.Combine(folder, Path.GetFileName(PCROverflowMetadataFilePath));
 
+            modelMetadataFile = Path.Combine(folder, Path.GetFileName(modelMetadataFile));
+
             var required = new[]
             {
                 PatientHashFilePath, PatientOverflowFilePath, PatientHashMetadataFilePath, PatientOverflowMetadataFilePath,
-                PCRHashFilePath, PCROverflowFilePath, PCRHashMetadataFilePath, PCROverflowMetadataFilePath
+                PCRHashFilePath, PCROverflowFilePath, PCRHashMetadataFilePath, PCROverflowMetadataFilePath, modelMetadataFile
             };
 
             var missing = required.Where(p => !File.Exists(p)).ToList();
@@ -136,6 +147,36 @@ namespace Aus2_Heap.PacientModel
             try { pacienti?.Close(); } catch { }
             try { pcrTesty?.Close(); } catch { }
 
+            
+            FileStream fs = new FileStream(modelMetadataFile, FileMode.Open, FileAccess.Read);
+            int pacientiCounterLocal = 1;
+            int pcrTestyCounterLocal = 1;
+            int pcrTestyBlockSizeLocal = 512;
+            int pcrOverflowBlockSizeLocal = 512;
+            int pacientiBlockSizeLocal = 512;
+            int pacientiOverflowBlockSizeLocal = 512;
+            using (BinaryReader br = new BinaryReader(fs))
+            {
+                try
+                {
+                    pacientiCounterLocal = br.ReadInt32();
+                    pcrTestyCounterLocal = br.ReadInt32();
+                    pacientCounter = pacientiCounterLocal;
+                    pcrTestCounter = pcrTestyCounterLocal;
+                    pcrTestyBlockSizeLocal = br.ReadInt32();
+                    pcrOverflowBlockSizeLocal = br.ReadInt32();
+                    pacientiBlockSizeLocal = br.ReadInt32();
+                    pacientiOverflowBlockSizeLocal = br.ReadInt32();
+                    PCRHashBlockSize = pcrTestyBlockSizeLocal;
+                    PCROverflowBlockSize = pcrOverflowBlockSizeLocal;
+                    PatientHashBlockSize = pacientiBlockSizeLocal;
+                    PatientHashOverflowBlockSize = pacientiOverflowBlockSizeLocal;
+                }
+                catch (EndOfStreamException)
+                {
+
+                }
+            }
             try
             {
                 pacienti = new LinearHash<Patient>(PatientHashBlockSize, PatientHashOverflowBlockSize, PatientHashFilePath, PatientHashMetadataFilePath, PatientOverflowFilePath, PatientOverflowMetadataFilePath, true);
@@ -168,10 +209,24 @@ namespace Aus2_Heap.PacientModel
             PCRHashMetadataFilePath = Path.Combine(folder, Path.GetFileName(PCRHashMetadataFilePath));
             PCROverflowMetadataFilePath = Path.Combine(folder, Path.GetFileName(PCROverflowMetadataFilePath));
 
+            modelMetadataFile = Path.Combine(folder, Path.GetFileName(modelMetadataFile));
+
+            FileStream fs = new FileStream(modelMetadataFile, FileMode.Create, FileAccess.Write);
+            using (BinaryWriter bw = new BinaryWriter(fs))
+            {
+                bw.Write(pacientCounter);
+                bw.Write(pcrTestCounter);
+                bw.Write(PCRHashBlockSize);
+                bw.Write(PCROverflowBlockSize);
+                bw.Write(PatientHashBlockSize);
+                bw.Write(PatientHashOverflowBlockSize);
+            }
+            fs.Close();
+
             var toCreate = new[]
             {
                 PatientHashFilePath, PatientOverflowFilePath, PatientHashMetadataFilePath, PatientOverflowMetadataFilePath,
-                PCRHashFilePath, PCROverflowFilePath, PCRHashMetadataFilePath, PCROverflowMetadataFilePath
+                PCRHashFilePath, PCROverflowFilePath, PCRHashMetadataFilePath, PCROverflowMetadataFilePath, modelMetadataFile
             };
 
             foreach (var path in toCreate)
@@ -187,6 +242,44 @@ namespace Aus2_Heap.PacientModel
         {
             pacienti.Close();
             pcrTesty.Close();
+            FileStream fs = new FileStream(modelMetadataFile, FileMode.Create, FileAccess.Write);
+            using (BinaryWriter bw = new BinaryWriter(fs))
+            {
+                bw.Write(pacientCounter);
+                bw.Write(pcrTestCounter);
+                bw.Write(PCRHashBlockSize);
+                bw.Write(PCROverflowBlockSize);
+                bw.Write(PatientHashBlockSize);
+                bw.Write(PatientHashOverflowBlockSize);
+            }
+            fs.Close();
+        }
+
+        public string ReturnPatientMainFileInfo()
+        {
+            return pacienti.BaseToString();
+        }
+
+        public string ReturnPatientOverflowFileInfo()
+        {
+            return pacienti.OverflowToString();
+        }
+        public string ReturnPCRMainFileInfo()
+        {
+            return pcrTesty.BaseToString();
+        }
+        public string ReturnPCROverflowFileInfo()
+        {
+            return pcrTesty.OverflowToString();
+        }
+
+        public string ReturnPatientToString()
+        {
+            return pacienti.ToString();
+        }
+        public string ReturnPCRToString()
+        {
+            return pcrTesty.ToString();
         }
     }
-}
+    }

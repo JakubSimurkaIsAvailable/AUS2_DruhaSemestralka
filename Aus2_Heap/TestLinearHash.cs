@@ -17,11 +17,12 @@ namespace Aus2_Heap
         string metaPathOverflow;
         LinearHash<Patient> linearHash;
         int uidCounter = 0;
-
+        Patient dummy = new Patient();
         public TestLinearHash()
         {
-            blockSizeHash = 200;
-            blockSizeOverflow = 100;
+            
+            blockSizeHash = dummy.GetSize() * 2;
+            blockSizeOverflow = dummy.GetSize() * 4;
             pathHash = "hashFile.bin";
             pathOverflow = "overflowFile.bin";
             metaPathHash = "metaHashFile.bin";
@@ -35,7 +36,7 @@ namespace Aus2_Heap
             Console.WriteLine("Press N to write number of random operations, press R to test one by one");
             char choice = Console.ReadKey().KeyChar;
             Console.WriteLine();
-            var rand = new Random(1);
+            var rand = new Random();
 
             var liveRecords = new List<Patient>();
             var uids = new HashSet<string>(StringComparer.Ordinal);
@@ -90,7 +91,7 @@ namespace Aus2_Heap
                             }
                         Console.WriteLine($"[{op + 1}/{target}] Inserted {patient.UniqueID}");
                         }
-                        else if (chance < 61)
+                        else if (chance < 70)
                         {
                            //check all
                            foreach (var rec in liveRecords)
@@ -99,22 +100,44 @@ namespace Aus2_Heap
                                 if (!rec.Equals(got))
                                     throw new Exception("ERROR: Retrieved value does not match expected value during full check!");
                         }
-                    }
-                        else
-                        {
-                            // Get
-                            if (liveRecords.Count == 0)
-                            {
-                                Console.WriteLine($"[{op + 1}/{target}] Get skipped - no records");
-                                continue;
-                            }
-                            var chosen = liveRecords[rand.Next(liveRecords.Count)];
-                            Console.WriteLine($"Getting {chosen.UniqueID}");
-                        var got = linearHash.Get(chosen);
-                            if (!chosen.Equals(got))
-                                throw new Exception("ERROR: Retrieved value does not match expected value!");
-                            Console.WriteLine($"[{op + 1}/{target}] Retrieved {got.UniqueID}");
                         }
+                    else if (chance < 90)
+                    {
+                        //update
+                        if (liveRecords.Count == 0)
+                        {
+                            Console.WriteLine($"[{op + 1}/{target}] Update skipped - no records");
+                            continue;
+                        }
+                        var chosen = liveRecords[rand.Next(liveRecords.Count)];
+                        Console.WriteLine($"Updating {chosen.UniqueID}");
+                        // create updated record
+                        var updated = new Patient(chosen.Name + "!", chosen.Surname, chosen.BirthDate, chosen.UniqueID);
+                        linearHash.Update(updated);
+                        // verify retrievable
+                        var got = linearHash.Get(updated);
+                        if (!updated.Equals(got))
+                            throw new Exception("ERROR: Updated value does not match retrieved value!");
+                        if(!got.Name.Equals(updated.Name) || got.Name.Equals(chosen.Name)) 
+                            throw new Exception("ERROR: Updated value not properly stored!");
+                    }
+
+
+                    else
+                    {
+                        // Get
+                        if (liveRecords.Count == 0)
+                        {
+                            Console.WriteLine($"[{op + 1}/{target}] Get skipped - no records");
+                            continue;
+                        }
+                        var chosen = liveRecords[rand.Next(liveRecords.Count)];
+                        Console.WriteLine($"Getting {chosen.UniqueID}");
+                        var got = linearHash.Get(chosen);
+                        if (!chosen.Equals(got))
+                            throw new Exception("ERROR: Retrieved value does not match expected value!");
+                        Console.WriteLine($"[{op + 1}/{target}] Retrieved {got.UniqueID}");
+                    }
 
                         // print some meta info
                         Console.WriteLine($"Block count: {linearHash.GetBlockCount()}");
@@ -127,7 +150,6 @@ namespace Aus2_Heap
                     
                 }
 
-                // pretend ToString exists and writes heapfile representation
                 Console.WriteLine("Final LinearHash state (ToString output):");
                 Console.WriteLine(linearHash.ToString());
                 linearHash.Close();
@@ -169,6 +191,7 @@ namespace Aus2_Heap
                                     throw new Exception("ERROR: Retrieved value does not match expected value during full check!");
                             }
                         }
+                        
                         else
                         {
                             if (liveRecords.Count == 0)

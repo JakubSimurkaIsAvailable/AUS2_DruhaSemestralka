@@ -20,7 +20,7 @@ namespace Aus2_Heap
         List<List<Patient>> testDataList = new List<List<Patient>>();
         public Tester()
         {
-            heap = new Heap<Patient>(recordSize, testFilePath, metaFilePath, false, false); 
+            heap = new Heap<Patient>(recordSize, testFilePath, metaFilePath, false, false, false); 
         }
         public void Run()
         {
@@ -200,7 +200,7 @@ namespace Aus2_Heap
                     break;
                 }
             }
-            heap = new Heap<Patient>(recordSize, testFilePath, metaFilePath, false, false);
+            heap = new Heap<Patient>(recordSize, testFilePath, metaFilePath, false, false, false);
             for (int i = 0; i < testDataList.Count; i++)
             {
                 var records = heap.GetAllRecordsInBlock(i);

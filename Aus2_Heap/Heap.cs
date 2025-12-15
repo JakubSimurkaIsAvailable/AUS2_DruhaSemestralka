@@ -20,30 +20,37 @@ namespace Aus2_Heap
         private FileStream metaStream;
         private bool manageFreeBlocks;
         private int blockCount = 0;
-        private List<int> freeBlocks = new List<int>();
-        private List<int> notFullBlocks = new List<int>();
+        public List<int> freeBlocks = new List<int>();
+        public List<int> notFullBlocks = new List<int>();
         private bool enableNotFullBlocksPrefference = true;
         private bool enableWriteNextBlockIndex;
         private bool enableWriteChainLength;
+        private bool enableWriteDeleteDetails;
 
         protected byte[] MetaBuffer { get; private set; }
         protected int MetaExtraOffset { get; private set; }
 
-        public Heap(int blokSize, string path, string metaPath, bool enableWriteNextBlockIndex, bool enableWriteChainLength, bool manageFreeBlocks = true)
+        public Heap(int blokSize, string path, string metaPath, bool enableWriteNextBlockIndex, bool enableWriteChainLength, bool enableWriteDeleteDetails, bool manageFreeBlocks = true)
         {
             this.manageFreeBlocks = manageFreeBlocks;
             blockSize = blokSize;
             filePath = path;
             this.metaPath = metaPath;
-            
+
             this.enableWriteNextBlockIndex = enableWriteNextBlockIndex;
             this.enableWriteChainLength = enableWriteChainLength;
-            if(this.enableWriteChainLength)
+            this.enableWriteDeleteDetails = enableWriteDeleteDetails;
+            if (this.enableWriteChainLength)
             {
                 BlokHeaderSize += sizeof(int);
             }
-            if(this.enableWriteNextBlockIndex)
+            if (this.enableWriteNextBlockIndex)
             {
+                BlokHeaderSize += sizeof(int);
+            }
+            if (this.enableWriteDeleteDetails)
+            {
+                BlokHeaderSize += sizeof(int);
                 BlokHeaderSize += sizeof(int);
             }
             recordsPerBlock = (blockSize - BlokHeaderSize) / recordSize;
@@ -116,12 +123,13 @@ namespace Aus2_Heap
                 try
                 {
                     blockSize = BitConverter.ToInt32(buffer, offset);
+                    offset += 4;
                     int freeCount = BitConverter.ToInt32(buffer, offset);
                     offset += 4;
 
                     for (int i = 0; i < freeCount; i++)
                     {
-                        
+
                         int blokIndex = BitConverter.ToInt32(buffer, offset);
                         offset += 4;
                         if (blokIndex >= 0 && blokIndex < blockCount)
@@ -132,7 +140,7 @@ namespace Aus2_Heap
 
                     for (int i = 0; i < notFullCount; i++)
                     {
-                        
+
                         int blokIndex = BitConverter.ToInt32(buffer, offset);
                         offset += 4;
                         if (blokIndex >= 0 && blokIndex < blockCount)
@@ -175,8 +183,13 @@ namespace Aus2_Heap
                 read += r;
             }
             var block = new Block<T>(blockSize, recordSize, index);
-            if(enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
-            if(enableWriteChainLength) block.EnableWriteChainLength();
+            if (enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
+            if (enableWriteChainLength) block.EnableWriteChainLength();
+            if (enableWriteDeleteDetails)
+            {
+                block.EnableDeletedCount();
+                block.EnableLastIndexValidCount();
+            }
             block.FromBytes(buffer);
             return block;
         }
@@ -190,27 +203,99 @@ namespace Aus2_Heap
             fileStream.Seek((long)block.GetIndex() * blockSize, SeekOrigin.Begin);
             fileStream.Write(data, 0, data.Length);
             fileStream.Flush();
+
+            try
+            {
+                int idx = block.GetIndex();
+                int vc = block.GetValidCount();
+                if (vc <= 0)
+                {
+                    if (!freeBlocks.Contains(idx))
+                        freeBlocks.Add(idx);
+                    if (notFullBlocks.Contains(idx))
+                        notFullBlocks.Remove(idx);
+                }
+                else if (vc < recordsPerBlock)
+                {
+                    if (freeBlocks.Contains(idx))
+                        freeBlocks.Remove(idx);
+                    if (!notFullBlocks.Contains(idx))
+                        notFullBlocks.Add(idx);
+                }
+                else
+                {
+                    if (freeBlocks.Contains(idx))
+                        freeBlocks.Remove(idx);
+                    if (notFullBlocks.Contains(idx))
+                        notFullBlocks.Remove(idx);
+                }
+
+                freeBlocks.Sort();
+                notFullBlocks.Sort();
+            }
+            catch
+            {
+                
+            }
+        }
+
+        public int InsertRecordsToBlock(List<T> records)
+        {
+            int address = -1;
+            Block<T> block;
+            if (freeBlocks.Count > 0)
+            {
+                address = freeBlocks.First();
+                block = ReadBlock(address);
+            }
+            else
+            {
+                address = blockCount;
+                blockCount++;
+                block = new Block<T>(blockSize, recordSize, address);
+                if (enableWriteChainLength) block.EnableWriteChainLength();
+                if (enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
+                if (enableWriteDeleteDetails)
+                {
+                    block.EnableDeletedCount();
+                    block.EnableLastIndexValidCount();
+                }
+            }
+            foreach (var record in records)
+            {
+                try
+                {
+                    block.AddRecord(record);
+                }
+                catch (InvalidOperationException e)
+                {
+                    break;
+                }
+            }
+            WriteBlock(block);
+            return address;
         }
 
         public int Insert(T record, int? insertIndex = null)
         {
-           
+
             Block<T> block;
             int index;
-            if(insertIndex != null)
+            if (insertIndex != null)
             {
                 index = insertIndex.Value;
                 if (index < 0 || index >= blockCount) throw new ArgumentOutOfRangeException(nameof(index));
                 block = ReadBlock(index);
                 try
                 {
-                    
+
                     block.AddRecord(record);
-                } catch (InvalidOperationException e)
+                }
+                catch (InvalidOperationException e)
                 {
                     return -1;
                 }
-                
+
                 if (block.GetValidCount() == recordsPerBlock)
                 {
                     notFullBlocks.Remove(index);
@@ -223,7 +308,7 @@ namespace Aus2_Heap
                         notFullBlocks.Sort();
                     }
                 }
-                if(freeBlocks.Contains(index))
+                if (freeBlocks.Contains(index))
                 {
                     freeBlocks.Remove(index);
                 }
@@ -235,7 +320,7 @@ namespace Aus2_Heap
                 index = notFullBlocks.First();
                 block = ReadBlock(index);
                 block.AddRecord(record);
-                
+
                 if (block.GetValidCount() == recordsPerBlock)
                 {
                     notFullBlocks.RemoveAt(0);
@@ -249,7 +334,7 @@ namespace Aus2_Heap
                 block.AddRecord(record);
 
                 freeBlocks.RemoveAt(0);
-                if (block.GetValidCount() < recordsPerBlock)
+                if (block.GetValidCount() < recordsPerBlock && !notFullBlocks.Contains(index))
                 {
                     notFullBlocks.Add(index);
                     notFullBlocks.Sort();
@@ -260,20 +345,20 @@ namespace Aus2_Heap
             {
                 index = blockCount;
                 block = new Block<T>(blockSize, recordSize, index);
-                if(enableWriteChainLength) block.EnableWriteChainLength();
-                if(enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
+                if (enableWriteChainLength) block.EnableWriteChainLength();
+                if (enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
                 block.AddRecord(record);
 
                 WriteBlock(block);
                 blockCount++;
-                if (block.GetValidCount() < recordsPerBlock)
+                if (block.GetValidCount() < recordsPerBlock && !notFullBlocks.Contains(index))
                 {
                     notFullBlocks.Add(index);
                     notFullBlocks.Sort();
                 }
             }
             return index;
-            
+
         }
 
         public T Get(int id, T record)
@@ -286,6 +371,32 @@ namespace Aus2_Heap
             }
             return value;
         }
+
+        public void Update(int id, T record)
+        {
+            var block = ReadBlock(id);
+            var value = block.GetRecords().Take(block.GetValidCount()).FirstOrDefault(r => r.Equals(record));
+            if (value is null)
+            {
+                throw new ArgumentOutOfRangeException($"Record was not found in block {id}");
+            }
+            int index = block.GetRecords().IndexOf(value);
+            block.GetRecords()[index] = record;
+            WriteBlock(block);
+        }
+
+        public void Update2(int id, T record)
+        {
+            if (id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
+            var block = ReadBlock(id);
+            var blockList = block.GetRecords();
+            int foundIndex = blockList.FindIndex(r => r.Equals(record));
+            if (foundIndex < 0) throw new KeyNotFoundException($"Record was not found in block {id}");
+            var oldRecord = blockList[foundIndex];
+            blockList[foundIndex] = record;
+            WriteBlock(block);
+        }
+
         public int GetValidCountInBlock(int id)
         {
             if (id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
@@ -333,7 +444,7 @@ namespace Aus2_Heap
                     freeBlocks.Sort();
                 }
                 notFullBlocks.Remove(id);
-                int tailIndex = blockCount; 
+                int tailIndex = blockCount;
                 while (blockCount > 0 && freeBlocks.Count > 0 && freeBlocks.Last() == blockCount - 1 && manageFreeBlocks)
                 {
                     tailIndex = blockCount - 1;
@@ -386,8 +497,8 @@ namespace Aus2_Heap
         protected int CreateBlock()
         {
             var block = new Block<T>(blockSize, recordSize, blockCount);
-            if(enableWriteChainLength) block.EnableWriteChainLength();
-            if(enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
+            if (enableWriteChainLength) block.EnableWriteChainLength();
+            if (enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
             WriteBlock(block);
             blockCount++;
             freeBlocks.Add(block.GetIndex());
@@ -397,7 +508,7 @@ namespace Aus2_Heap
         protected void DeleteBlock(int index)
         {
             if (index < 0 || index >= blockCount) throw new ArgumentOutOfRangeException(nameof(index));
-            int tailIndex = blockCount; 
+            int tailIndex = blockCount;
             int validCount = ReadBlock(index).GetValidCount();
             if (validCount > 0)
             {
@@ -413,12 +524,16 @@ namespace Aus2_Heap
         }
         public void DeleteBlockWithId(int id)
         {
-            if(id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
-            freeBlocks.Add(id);
-            freeBlocks.Sort();
+            if (id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
+            if(!freeBlocks.Contains(id))
+            {
+                freeBlocks.Add(id);
+                freeBlocks.Sort();
+            }
+            
             Block<T> block = new Block<T>(blockSize, recordSize, id);
-            if(enableWriteChainLength) block.EnableWriteChainLength();
-            if(enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
+            if (enableWriteChainLength) block.EnableWriteChainLength();
+            if (enableWriteNextBlockIndex) block.EnableWriteNextBlockIndex();
             WriteBlock(block);
             while (blockCount > 0 && freeBlocks.Count > 0 && freeBlocks.Last() == blockCount - 1 && manageFreeBlocks)
             {
@@ -429,17 +544,8 @@ namespace Aus2_Heap
             fileStream.SetLength((long)blockCount * blockSize);
 
         }
+
         
-        public void Update(int id, T record)
-        {
-            if (id < 0 || id >= blockCount) throw new ArgumentOutOfRangeException(nameof(id));
-            var block = ReadBlock(id);
-            var blockList = block.GetRecords();
-            int foundIndex = blockList.FindIndex(r => r.Equals(record));
-            if (foundIndex < 0) throw new KeyNotFoundException($"Record was not found in block {id}");
-            blockList[foundIndex] = record;
-            WriteBlock(block);
-        }
 
         public virtual void Close()
         {
@@ -480,7 +586,7 @@ namespace Aus2_Heap
             }
             catch
             {
-                
+
             }
 
             var outArray = bytes.ToArray();
@@ -497,6 +603,32 @@ namespace Aus2_Heap
         protected virtual byte[] GetExtraMetaBytes()
         {
             return null;
+        }
+        protected virtual void LoadExtraMetaBytes(byte[] buffer, int offset)
+        {
+
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine($"Heap<{typeof(T).Name}>:");
+            sb.AppendLine($"  Block Size: {blockSize}");
+            sb.AppendLine($"  Record Size: {recordSize}");
+            sb.AppendLine($"  Records Per Block: {recordsPerBlock}");
+            sb.AppendLine($"  Total Blocks: {blockCount}");
+            sb.AppendLine($"  Free Blocks: {string.Join(", ", freeBlocks)}");
+            sb.AppendLine($"  Not Full Blocks: {string.Join(", ", notFullBlocks)}");
+            for (int i = 0; i < blockCount; i++)
+            {
+                var block = ReadBlock(i);
+                sb.AppendLine($"  Block {i}: ValidCount={block.GetValidCount()}");
+                for (int j = 0; j < block.GetValidCount(); j++)
+                {
+                    sb.AppendLine($"    Record {j}: {block.GetRecords()[j]}");
+                }
+            }
+            return sb.ToString();
         }
     }
 }
